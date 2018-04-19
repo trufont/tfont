@@ -1,5 +1,5 @@
 import attr
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 # add access to interpolated glyphs --> Instance.glyphs
 
@@ -20,7 +20,7 @@ class Instance:
     postscriptFontName: str = attr.ib(default="")
     postscriptFullName: str = attr.ib(default="")
 
-    _parent: Optional[object] = attr.ib(default=None, init=False)
+    _parent: Optional[Any] = attr.ib(default=None, init=False)
 
     def __repr__(self):
         more = ""

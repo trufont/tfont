@@ -5,7 +5,7 @@ import pprint
 from tfont.objects.point import Point
 from tfont.util import bezierMath
 from tfont.util.tracker import TrackingList
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 
 
 class PathPointsList(TrackingList):
@@ -20,9 +20,9 @@ class PathPointsList(TrackingList):
 class Path:
     _points: List[Point] = attr.ib(default=attr.Factory(list))
 
-    _bounds: Optional[tuple] = attr.ib(default=None, init=False)
-    _graphicsPath: Optional[object] = attr.ib(default=None, init=False)
-    _parent: Optional[object] = attr.ib(default=None, init=False)
+    _bounds: Optional[Tuple] = attr.ib(default=None, init=False)
+    _graphicsPath: Optional[Any] = attr.ib(default=None, init=False)
+    _parent: Optional[Any] = attr.ib(default=None, init=False)
 
     def __attrs_post_init__(self):
         for point in self._points:

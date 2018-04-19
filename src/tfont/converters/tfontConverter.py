@@ -1,9 +1,10 @@
+import attr
 import cattr
 from collections.abc import Collection
 from datetime import datetime
 import rapidjson as json
 from tfont.objects.font import Font
-from tfont.objects.misc import Transformation
+from tfont.objects.misc import AlignmentZone, Transformation
 from tfont.objects.path import Path
 from tfont.objects.point import Point
 from typing import Union
@@ -68,11 +69,16 @@ class TFontConverter(cattr.Converter):
             datetime, lambda dt: dt.strftime(dateFormat))
         # Number disambiguation (json gave the right type already)
         self.register_structure_hook(Union[int, float], lambda d, _: d)
+
+        structure_seq = lambda d, t: t(*d)
+        # Alignment zone
+        self.register_structure_hook(AlignmentZone, structure_seq)
+        self.register_unstructure_hook(AlignmentZone, attr.astuple)
         # Path
         self.register_structure_hook(Path, _structure_Path)
         self.register_unstructure_hook(Path, _unstructure_Path)
         # Transformation
-        self.register_structure_hook(Transformation,  lambda d, t: t(*d))
+        self.register_structure_hook(Transformation, structure_seq)
         self.register_unstructure_hook(Transformation, tuple)
 
     def open(self, path, font=None):

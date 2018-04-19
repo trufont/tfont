@@ -3,7 +3,7 @@ from tfont.objects.layer import Layer
 from tfont.objects.misc import obj_setattr
 from tfont.util.tracker import TrackingDictList
 from time import time
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class GlyphLayersDictList(TrackingDictList):
@@ -48,11 +48,11 @@ class Glyph:
 
     _layers: List[Layer] = attr.ib(default=attr.Factory(list))
 
-    color: Optional[tuple] = attr.ib(default=None)
-    _extraData: Optional[dict] = attr.ib(default=None)
+    color: Optional[Tuple] = attr.ib(default=None)
+    _extraData: Optional[Dict] = attr.ib(default=None)
 
     _lastModified: Optional[float] = attr.ib(default=None, init=False)
-    _parent: Optional[object] = attr.ib(default=None, init=False)
+    _parent: Optional[Any] = attr.ib(default=None, init=False)
     selected: bool = attr.ib(default=False, init=False)
 
     def __attrs_post_init__(self):

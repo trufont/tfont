@@ -1,5 +1,5 @@
 import attr
-from typing import Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 import uuid
 
 obj_setattr = object.__setattr__
@@ -20,7 +20,7 @@ class Transformation:
     xOffset: Union[int, float] = attr.ib(default=0)
     yOffset: Union[int, float] = attr.ib(default=0)
 
-    _parent: Optional[object] = attr.ib(cmp=False, default=None, init=False)
+    _parent: Optional[Any] = attr.ib(cmp=False, default=None, init=False)
 
     def __bool__(self):
         return bool(self.xyScale or self.yxScale or self.xOffset or

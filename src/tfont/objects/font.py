@@ -6,7 +6,7 @@ from tfont.objects.glyph import Glyph
 from tfont.objects.instance import Instance
 from tfont.objects.master import Master, fontMasterList
 from tfont.util.tracker import TaggingDictList, TaggingList
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 class FontAxesDictList(TaggingDictList):
@@ -18,6 +18,39 @@ class FontAxesDictList(TaggingDictList):
     @property
     def _sequence(self):
         return self._parent._axes
+
+
+class FontFeaturesDictList(TaggingDictList):
+    __slots__ = ()
+
+    _property = "tag"
+    _strict = True
+
+    @property
+    def _sequence(self):
+        return self._parent._features
+
+
+class FontFeatureClassesDictList(TaggingDictList):
+    __slots__ = ()
+
+    _property = "name"
+    _strict = True
+
+    @property
+    def _sequence(self):
+        return self._parent._featureClasses
+
+
+class FontFeatureHeadersDictList(TaggingDictList):
+    __slots__ = ()
+
+    _property = "description"
+    _strict = True
+
+    @property
+    def _sequence(self):
+        return self._parent._featureHeaders
 
 
 class FontGlyphsDictList(TaggingDictList):
@@ -57,10 +90,9 @@ class Font:
     familyName: str = attr.ib(default="New Font")
 
     _axes: List[Axis] = attr.ib(default=attr.Factory(list))
-    # TODO use tracker
-    features: List[Feature] = attr.ib(default=attr.Factory(list))
-    featureClasses: List[FeatureClass] = attr.ib(default=attr.Factory(list))
-    featureHeaders: List[FeatureHeader] = attr.ib(default=attr.Factory(list))
+    _features: List[Feature] = attr.ib(default=attr.Factory(list))
+    _featureClasses: List[FeatureClass] = attr.ib(default=attr.Factory(list))
+    _featureHeaders: List[FeatureHeader] = attr.ib(default=attr.Factory(list))
     _glyphs: List[Glyph] = attr.ib(default=attr.Factory(list))
     _masters: List[Master] = attr.ib(default=attr.Factory(fontMasterList))
     _instances: List[Instance] = attr.ib(default=attr.Factory(list))
@@ -74,10 +106,10 @@ class Font:
     versionMajor: int = attr.ib(default=1)
     versionMinor: int = attr.ib(default=0)
 
-    extraData: dict = attr.ib(default=attr.Factory(dict))
+    extraData: Dict = attr.ib(default=attr.Factory(dict))
 
-    _cmap: Optional[object] = attr.ib(default=None, init=False)
-    _layoutEngine: Optional[object] = attr.ib(default=None, init=False)
+    _cmap: Optional[Any] = attr.ib(default=None, init=False)
+    _layoutEngine: Optional[Any] = attr.ib(default=None, init=False)
     _modified: bool = attr.ib(default=False, init=False)
     _selectedMaster: int = attr.ib(default=0, init=False)
 
@@ -99,6 +131,18 @@ class Font:
     @property
     def axes(self):
         return FontAxesDictList(self)
+
+    @property
+    def features(self):
+        return FontFeaturesDictList(self)
+
+    @property
+    def featureClasses(self):
+        return FontFeatureClassesDictList(self)
+
+    @property
+    def featureHeaders(self):
+        return FontFeatureHeadersDictList(self)
 
     @property
     def glyphs(self):

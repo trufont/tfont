@@ -1,7 +1,7 @@
 import attr
 from tfont.objects.misc import obj_setattr
 from time import time
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 
 
 @attr.s(cmp=False, repr=False, slots=True)
@@ -11,9 +11,9 @@ class Point:
     type: Optional[str] = attr.ib(default=None)
     smooth: bool = attr.ib(default=False)
 
-    _extraData: Optional[dict] = attr.ib(default=None)
+    _extraData: Optional[Dict] = attr.ib(default=None)
 
-    _parent: Optional[object] = attr.ib(default=None, init=False)
+    _parent: Optional[Any] = attr.ib(default=None, init=False)
     selected: bool = attr.ib(default=False, init=False)
 
     def __repr__(self):

@@ -8,7 +8,7 @@ from tfont.objects.misc import Transformation, obj_setattr
 from tfont.objects.path import Path
 from tfont.util.tracker import TrackingDictList, TrackingList
 from time import time
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 
 def bytwo(iterable):
@@ -116,17 +116,17 @@ class Layer:
     _guidelines: List[Guideline] = attr.ib(default=attr.Factory(list))
     _paths: List[Path] = attr.ib(default=attr.Factory(list))
 
-    color: Optional[tuple] = attr.ib(default=None)
-    _extraData: Optional[dict] = attr.ib(default=None)
+    color: Optional[Tuple] = attr.ib(default=None)
+    _extraData: Optional[Dict] = attr.ib(default=None)
     _visible: bool = attr.ib(default=False)
 
-    _bounds: Optional[tuple] = attr.ib(default=None, init=False)
-    _closedGraphicsPath: Optional[object] = attr.ib(default=None, init=False)
-    _openGraphicsPath: Optional[object] = attr.ib(default=None, init=False)
-    _parent: Optional[object] = attr.ib(default=None, init=False)
-    _selectedPaths: Optional[object] = attr.ib(default=None, init=False)
-    _selection: set = attr.ib(default=attr.Factory(set), init=False)
-    _selectionBounds: Optional[tuple] = attr.ib(default=None, init=False)
+    _bounds: Optional[Tuple] = attr.ib(default=None, init=False)
+    _closedGraphicsPath: Optional[Any] = attr.ib(default=None, init=False)
+    _openGraphicsPath: Optional[Any] = attr.ib(default=None, init=False)
+    _parent: Optional[Any] = attr.ib(default=None, init=False)
+    _selectedPaths: Optional[Any] = attr.ib(default=None, init=False)
+    _selection: Set = attr.ib(default=attr.Factory(set), init=False)
+    _selectionBounds: Optional[Tuple] = attr.ib(default=None, init=False)
 
     def __attrs_post_init__(self):
         for anchor in self._anchors:
@@ -215,7 +215,8 @@ class Layer:
                         right = r
                     if t > top:
                         top = t
-            bounds = self._bounds = (left, bottom, right, top)
+            if left is not None:
+                bounds = self._bounds = (left, bottom, right, top)
         # we can't stash component bounds, we aren't notified when it changes
         for component in self._components:
             l, b, r, t = component.bounds

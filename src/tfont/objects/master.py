@@ -2,7 +2,7 @@ import attr
 from tfont.objects.guideline import Guideline
 from tfont.objects.misc import AlignmentZone, obj_setattr, uuid4_str
 from tfont.util.tracker import TaggingList
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class MasterGuidelinesList(TaggingList):
@@ -35,7 +35,7 @@ class Master:
 
     visible: bool = attr.ib(default=False)
 
-    _parent: Optional[object] = attr.ib(default=None, init=False)
+    _parent: Optional[Any] = attr.ib(default=None, init=False)
 
     def __repr__(self):
         more = ""
