@@ -49,8 +49,10 @@ class TFontConverter(cattr.Converter):
 
     version = 0
 
-    def __init__(self, **kwargs):
+    def __init__(self, minify=False, **kwargs):
         super().__init__(**kwargs)
+        self.minify = minify
+
         # datetime
         dateFormat = '%Y-%m-%d %H:%M:%S'
         self.register_structure_hook(
@@ -81,22 +83,26 @@ class TFontConverter(cattr.Converter):
 
     def save(self, font, path):
         d = self.unstructure(font)
-        dump_s = json.dumps(d, indent=0)
-        start = 0
-        for m in _re_tuple.finditer(dump_s):
-            if not start:
-                out = StringIO()
-            rstart, rend = m.start(), m.end()
-            out.write(dump_s[start:rstart])
-            out.write(dump_s[rstart:rend].replace('\n', ''))
-            start = rend
-        if start:
-            out.write(dump_s[start:])
-            s = out.getvalue()
+        if self.minify:
+            with open(path, 'w') as file:
+                json.dump(d, file)
         else:
-            s = dump_s
-        with open(path, 'w') as file:
-            file.write(s)
+            dump_s = json.dumps(d, indent=0)
+            start = 0
+            for m in _re_tuple.finditer(dump_s):
+                if not start:
+                    out = StringIO()
+                rstart, rend = m.start(), m.end()
+                out.write(dump_s[start:rstart])
+                out.write(dump_s[rstart:rend].replace('\n', ''))
+                start = rend
+            if start:
+                out.write(dump_s[start:])
+                s = out.getvalue()
+            else:
+                s = dump_s
+            with open(path, 'w') as file:
+                file.write(s)
 
     def structure_attrs_fromdict(self, obj, cl):
         conv_obj = obj.copy()  # Dict of converted parameters.
