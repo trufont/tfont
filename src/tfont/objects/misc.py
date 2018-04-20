@@ -10,6 +10,10 @@ class AlignmentZone:
     position: int = attr.ib()
     size: int = attr.ib()
 
+    def __iter__(self):
+        yield self.position
+        yield self.size
+
 
 @attr.s(repr=False, slots=True)
 class Transformation:

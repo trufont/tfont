@@ -6,7 +6,7 @@ from tfont.objects.glyph import Glyph
 from tfont.objects.instance import Instance
 from tfont.objects.master import Master, fontMasterList
 from tfont.util.tracker import TaggingDictList, TaggingList
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class FontAxesDictList(TaggingDictList):

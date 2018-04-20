@@ -2,37 +2,27 @@ import attr
 import cattr
 from collections.abc import Collection
 from datetime import datetime
+from io import StringIO
 import rapidjson as json
+import re
 from tfont.objects.font import Font
 from tfont.objects.misc import AlignmentZone, Transformation
 from tfont.objects.path import Path
 from tfont.objects.point import Point
 from typing import Union
 
+# lists that don't contain containers
+_re_tuple = re.compile(r'\[\n(([^\[\]\{\n])+\n)*\]')
+
 
 def _structure_Path(data, cls):
     points = []
-    for word in data:
-        if word.__class__ is str:
-            elements = word.split(" ")
-            v = elements[0]
-            try:
-                elements[0] = int(v)
-            except ValueError:
-                elements[0] = float(v)
-            v = elements[1]
-            try:
-                elements[1] = int(v)
-            except ValueError:
-                elements[1] = float(v)
-            try:
-                elements[3] = True
-            except IndexError:
-                pass
-            point = Point(*elements)
+    for element in data:
+        if element.__class__ is list:
+            point = Point(*element)
             points.append(point)
         else:
-            point._extraData = word
+            point._extraData = element
     return cls(points)
 
 
@@ -42,11 +32,11 @@ def _unstructure_Path(path):
         ptType = point.type
         if ptType is not None:
             if point.smooth:
-                value = f"{point.x} {point.y} {ptType} smooth"
+                value = (point.x, point.y, ptType, True)
             else:
-                value = f"{point.x} {point.y} {ptType}"
+                value = (point.x, point.y, ptType)
         else:
-            value = f"{point.x} {point.y}"
+            value = (point.x, point.y)
         data.append(value)
         extraData = point._extraData
         if extraData:
@@ -73,7 +63,7 @@ class TFontConverter(cattr.Converter):
         structure_seq = lambda d, t: t(*d)
         # Alignment zone
         self.register_structure_hook(AlignmentZone, structure_seq)
-        self.register_unstructure_hook(AlignmentZone, attr.astuple)
+        self.register_unstructure_hook(AlignmentZone, tuple)
         # Path
         self.register_structure_hook(Path, _structure_Path)
         self.register_unstructure_hook(Path, _unstructure_Path)
@@ -91,8 +81,22 @@ class TFontConverter(cattr.Converter):
 
     def save(self, font, path):
         d = self.unstructure(font)
+        dump_s = json.dumps(d, indent=0)
+        start = 0
+        for m in _re_tuple.finditer(dump_s):
+            if not start:
+                out = StringIO()
+            rstart, rend = m.start(), m.end()
+            out.write(dump_s[start:rstart])
+            out.write(dump_s[rstart:rend].replace('\n', ''))
+            start = rend
+        if start:
+            out.write(dump_s[start:])
+            s = out.getvalue()
+        else:
+            s = dump_s
         with open(path, 'w') as file:
-            json.dump(d, file, indent=0)
+            file.write(s)
 
     def structure_attrs_fromdict(self, obj, cl):
         conv_obj = obj.copy()  # Dict of converted parameters.
