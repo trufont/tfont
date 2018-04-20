@@ -1,18 +1,13 @@
-import attr
 import cattr
 from collections.abc import Collection
 from datetime import datetime
-from io import StringIO
 import rapidjson as json
-import re
+from rapidjson import RawJSON, dumps
 from tfont.objects.font import Font
 from tfont.objects.misc import AlignmentZone, Transformation
 from tfont.objects.path import Path
 from tfont.objects.point import Point
 from typing import Union
-
-# lists that don't contain containers
-_re_tuple = re.compile(r'\[\n(([^\[\]\{\n])+\n)*\]')
 
 
 def _structure_Path(data, cls):
@@ -37,7 +32,7 @@ def _unstructure_Path(path):
                 value = (point.x, point.y, ptType)
         else:
             value = (point.x, point.y)
-        data.append(value)
+        data.append(RawJSON(dumps(value)))
         extraData = point._extraData
         if extraData:
             data.append(extraData)
@@ -45,13 +40,13 @@ def _unstructure_Path(path):
 
 
 class TFontConverter(cattr.Converter):
-    __slots__ = "_font",
+    __slots__ = "_font", "indent"
 
     version = 0
 
-    def __init__(self, minify=False, **kwargs):
+    def __init__(self, indent=0, **kwargs):
         super().__init__(**kwargs)
-        self.minify = minify
+        self.indent = indent
 
         # datetime
         dateFormat = '%Y-%m-%d %H:%M:%S'
@@ -63,15 +58,17 @@ class TFontConverter(cattr.Converter):
         self.register_structure_hook(Union[int, float], lambda d, _: d)
 
         structure_seq = lambda d, t: t(*d)
+        unstructure_seq = lambda o: RawJSON(dumps(tuple(o)))
+        self.register_unstructure_hook(tuple, unstructure_seq)
         # Alignment zone
         self.register_structure_hook(AlignmentZone, structure_seq)
-        self.register_unstructure_hook(AlignmentZone, tuple)
+        self.register_unstructure_hook(AlignmentZone, unstructure_seq)
         # Path
         self.register_structure_hook(Path, _structure_Path)
         self.register_unstructure_hook(Path, _unstructure_Path)
         # Transformation
         self.register_structure_hook(Transformation, structure_seq)
-        self.register_unstructure_hook(Transformation, tuple)
+        self.register_unstructure_hook(Transformation, unstructure_seq)
 
     def open(self, path, font=None):
         with open(path, 'r') as file:
@@ -83,26 +80,8 @@ class TFontConverter(cattr.Converter):
 
     def save(self, font, path):
         d = self.unstructure(font)
-        if self.minify:
-            with open(path, 'w') as file:
-                json.dump(d, file)
-        else:
-            dump_s = json.dumps(d, indent=0)
-            start = 0
-            for m in _re_tuple.finditer(dump_s):
-                if not start:
-                    out = StringIO()
-                rstart, rend = m.start(), m.end()
-                out.write(dump_s[start:rstart])
-                out.write(dump_s[rstart:rend].replace('\n', ''))
-                start = rend
-            if start:
-                out.write(dump_s[start:])
-                s = out.getvalue()
-            else:
-                s = dump_s
-            with open(path, 'w') as file:
-                file.write(s)
+        with open(path, 'w') as file:
+            json.dump(d, file, indent=self.indent)
 
     def structure_attrs_fromdict(self, obj, cl):
         conv_obj = obj.copy()  # Dict of converted parameters.
