@@ -1,16 +1,14 @@
 import attr
 from tfont.objects.guideline import Guideline
-from tfont.objects.misc import AlignmentZone, obj_setattr, uuid4_str
-from tfont.util.tracker import TaggingList
+from tfont.objects.misc import AlignmentZone, uuid4_str
+from tfont.util.tracker import TrackingList
 from typing import Any, Dict, List, Optional
 
 
-class MasterGuidelinesList(TaggingList):
+class MasterGuidelinesList(TrackingList):
     __slots__ = ()
 
-    @property
-    def _sequence(self):
-        return self._parent._guidelines
+    _property = "_guidelines"
 
 
 @attr.s(cmp=False, repr=False, slots=True)
@@ -49,20 +47,6 @@ class Master:
                 except KeyError:
                     pass
         return "%s(%r%s)" % (self.__class__.__name__, self.name, more)
-
-    def __setattr__(self, key, value):
-        if key == "id":
-            try:
-                font = self._parent
-            except AttributeError:
-                pass
-            else:
-                if font is not None:
-                    oldValue = getattr(self, key)
-                    if value != oldValue:
-                        font.masters[value] = self
-                    return
-        obj_setattr(self, key, value)
 
     @property
     def font(self):

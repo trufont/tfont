@@ -1,13 +1,23 @@
 import cattr
 from collections.abc import Collection
 from datetime import datetime
+from functools import partial
 import rapidjson as json
 from rapidjson import RawJSON, dumps
+from tfont.objects.anchor import Anchor
+from tfont.objects.axis import Axis
+from tfont.objects.feature import Feature, FeatureClass, FeatureHeader
 from tfont.objects.font import Font
+from tfont.objects.glyph import Glyph
 from tfont.objects.misc import AlignmentZone, Transformation
 from tfont.objects.path import Path
 from tfont.objects.point import Point
-from typing import Union
+from typing import Dict, Union
+
+
+def _structure_seq_dict(self, attr, data, type_):
+    cls = type_.__args__[1]  # dict key type
+    return dict((e[attr], self.structure(e, cls)) for e in data)
 
 
 def _structure_Path(data, cls):
@@ -69,6 +79,35 @@ class TFontConverter(cattr.Converter):
         # Transformation
         self.register_structure_hook(Transformation, structure_seq)
         self.register_unstructure_hook(Transformation, unstructure_seq)
+
+        unstructure_seq_dict = lambda d: list(
+            self.unstructure(v) for v in d.values())
+        structure_dict_desc = partial(_structure_seq_dict, self, "description")
+        structure_dict_name = partial(_structure_seq_dict, self, "name")
+        structure_dict_tag = partial(_structure_seq_dict, self, "tag")
+        # Anchor
+        self.register_structure_hook(Dict[str, Anchor], structure_dict_name)
+        self.register_unstructure_hook(Dict[str, Anchor], unstructure_seq_dict)
+        # Axis
+        self.register_structure_hook(Dict[str, Axis], structure_dict_tag)
+        self.register_unstructure_hook(Dict[str, Axis], unstructure_seq_dict)
+        # Feature
+        self.register_structure_hook(Dict[str, Feature], structure_dict_tag)
+        self.register_unstructure_hook(
+            Dict[str, Feature], unstructure_seq_dict)
+        # FeatureClass
+        self.register_structure_hook(
+            Dict[str, FeatureClass], structure_dict_name)
+        self.register_unstructure_hook(
+            Dict[str, FeatureClass], unstructure_seq_dict)
+        # FeatureHeader
+        self.register_structure_hook(
+            Dict[str, FeatureHeader], structure_dict_desc)
+        self.register_unstructure_hook(
+            Dict[str, FeatureHeader], unstructure_seq_dict)
+        # Glyph
+        self.register_structure_hook(Dict[str, Glyph], structure_dict_name)
+        self.register_unstructure_hook(Dict[str, Glyph], unstructure_seq_dict)
 
     def open(self, path, font=None):
         with open(path, 'r') as file:

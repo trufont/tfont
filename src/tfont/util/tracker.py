@@ -1,454 +1,484 @@
+from collections.abc import MutableMapping, MutableSequence
 from time import time
 
-# TODO: we could keep only the tracking variants later on
+obj_setattr = object.__setattr__
 
 
-class TaggingList:
-    __slots__ = "_parent"
+class TrackingDict(MutableMapping):
+    """
+    Note: dict bears a value iterator (given that keys are just cached attrs),
+    for symmetry contains also operates on values.
+    """
+    __slots__ = "_dict", "_parent"
+
+    def applyChange(self):
+        pass
 
     def __init__(self, parent):
         self._parent = parent
+        self._dict = getattr(parent, self._property)
 
-    def __delitem__(self, index):
-        sequence = self._sequence
-        sequence[index]._parent = None
-        del sequence[index]
+    def __delitem__(self, key):
+        dict_ = self._dict
+        dict_[key]._parent = None
+        del dict_[key]
+        self.applyChange()
 
-    def __getitem__(self, index):
-        return self._sequence[index]
+    def __getitem__(self, key):
+        return self._dict[key]
 
-    # we don't implement __setitem__
+    def __iter__(self):
+        return iter(self._dict.values())
+
+    def __len__(self):
+        return len(self._dict)
+
+    def __setitem__(self, key, value):
+        parent = self._parent
+        if value._parent is parent:
+            oldKey = getattr(value, self._attr)
+            del self._dict[oldKey]
+        else:
+            value._parent = parent
+        obj_setattr(value, self._attr, key)
+        self._dict[key] = value
+        self.applyChange()
+
+    # aux methods
 
     def __contains__(self, value):
-        return value in self._sequence
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return self._sequence == other._sequence
-
-    def __iter__(self):
-        return iter(self._sequence)
-
-    def __len__(self):
-        return len(self._sequence)
+        key = getattr(value, self._attr)
+        v = self._dict[key]
+        return v is value or v == value
 
     def __repr__(self):
-        return repr(self._sequence)
+        return repr(self._dict)
 
-    def __reversed__(self):
-        return reversed(self._sequence)
+    def clear(self):
+        dict_ = self._dict
+        for value in dict_.values():
+            value._parent = None
+        dict_.clear()
 
-    @property
-    def _sequence(self):
-        raise NotImplementedError
+    def keys(self):
+        return self._dict.keys()
 
-    def append(self, value):
-        self._sequence.append(value)
-        value._parent = self._parent
+    def items(self):
+        return self._dict.items()
 
-    # we don't implement clear()
+    def popitem(self):
+        item = self._dict.popitem()
+        item[1]._parent = None
+        self.applyChange()
+        return item
 
-    # we don't implement copy()
-
-    def extend(self, values):
-        self._sequence.extend(values)
-        parent = self._parent
-        for value in values:
-            value._parent = parent
-
-    def index(self, value):
-        return self._sequence.index(value)
-
-    def insert(self, index, value):
-        self._sequence.insert(index, value)
-        value._parent = self._parent
-
-    def pop(self, index=-1):
-        value = self._sequence.pop(index)
-        value._parent = None
-        return value
-
-    def remove(self, value):
-        self._sequence.remove(value)
-        value._parent = None
-
-    def reverse(self):
-        self._sequence.reverse()
+    def values(self):
+        return self._dict.values()
 
 
-class TaggingDictList(TaggingList):
-    __slots__ = ()
+class TrackingList(MutableSequence):
+    __slots__ = "_list", "_parent"
 
-    def __delitem__(self, key):
-        sequence = self._sequence
-        if isinstance(key, str):
-            prop = self._property
-            for index, value in enumerate(sequence):
-                if getattr(value, prop) == key:
-                    sequence[index]._parent = None
-                    del sequence[index]
-                    return
-            raise KeyError(key)
-        sequence[key]._parent = None
-        del sequence[key]
-
-    def __getitem__(self, key):
-        sequence = self._sequence
-        if isinstance(key, str):
-            prop = self._property
-            for index, value in enumerate(sequence):
-                if getattr(value, prop) == key:
-                    return sequence[index]
-            raise KeyError(key)
-        return sequence[key]
-
-    def __setitem__(self, key, value):
-        if isinstance(key, str):
-            parent = self._parent
-            prop = self._property
-            existing = value._parent == parent
-            if existing and getattr(value, prop) == key:
-                return
-            setattr(value, prop, key)
-            value._parent = parent
-            sequence = self._sequence
-            for index, value_ in enumerate(sequence):
-                if value_ == value:
-                    delIndex = index
-                elif getattr(value_, prop) == key:
-                    sequence[index] = value
-                    if not existing:
-                        return
-            if existing:
-                del sequence[delIndex]
-            else:
-                sequence.append(value)
-            return
-        # we don't implement non-str __setitem__
-        raise KeyError("indices must be str, not %s" % key.__class__.__name__)
-
-    def __contains__(self, key):
-        if isinstance(key, str):
-            prop = self._property
-            for value in self._sequence:
-                if getattr(value, prop) == key:
-                    return True
-            return False
-        return key in self._sequence
-
-    def append(self, value):
-        parent = self._parent
-        if value._parent == parent:
-            return
-        value._parent = parent
-        sequence = self._sequence
-        prop = self._property
-        propValue = getattr(value, prop)
-        for index, value_ in enumerate(sequence):
-            if getattr(value_, prop) == propValue:
-                sequence[index] = value
-                return
-        sequence.append(value)
-
-    # get()?
-
-    # for now we don't enforce uniqueness in extend(), insert()
-
-    def extend(self, values):
-        raise NotImplementedError
-
-
-class TaggingDict:
-    # TODO: we could lazify this...
-    __slots__ = "_parent"
+    def applyChange(self):
+        pass
 
     def __init__(self, parent):
         self._parent = parent
+        self._list = getattr(parent, self._property)
 
     def __delitem__(self, key):
-        del self._sequence[key]
-
-    def __getitem__(self, key):
-        return self._sequence[key]
-
-    def __setitem__(self, key, value):
-        self._sequence[key] = value
-
-    def __contains__(self, key):
-        return key in self._sequence
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return self._sequence == other._sequence
-
-    def __iter__(self):
-        return iter(self._sequence)
-
-    def __len__(self):
-        return len(self._sequence)
-
-    def __repr__(self):
-        return repr(self._sequence)
-
-    @property
-    def _sequence(self):
-        raise NotImplementedError
-
-    # we don't implement clear()
-
-    # we don't implement copy()
-
-    def keys(self):
-        return self._sequence.keys()
-
-    def items(self):
-        return self._sequence.items()
-
-    # we don't implement pop()
-
-    # we don't implement update()
-
-    def values(self):
-        return self._sequence.values()
-
-# --------
-# Tracking
-# --------
-
-
-# this will work for
-# layer_components, layer_paths, layer_guidelines, path_points
-class TrackingList(TaggingList):
-    _graphics = True  # only False for guidelines
-    _selectible = True  # only False for paths
-
-    def __delitem__(self, index):
-        sequence = self._sequence
-        value = sequence[index]
-        del sequence[index]
-        #
-        if index.__class__ is slice:
-            for v in value:
-                self.applyChange(v, False)
-        else:
-            self.applyChange(value, False)
-
-    # we don't implement __setitem__
-
-    def applyChange(self, value=None, isAdding=None):
-        graphics = self._graphics
-        parent = self._parent
-        if value is not None:
-            if isAdding:
-                value._parent = parent
-            else:
-                value._parent = None
-        # Path?
-        if not hasattr(parent, "_selectionBounds"):
-            # the first parent is Path
-            # handle Path, then shift our parent to Layer
-            if graphics:
-                parent._bounds = parent._graphicsPath = None
-            parent = parent._parent
-            if parent is None:
-                return
-        # Layer
-        if graphics:
-            parent._bounds = parent._closedGraphicsPath = \
-                parent._openGraphicsPath = parent._selectedPaths = None
-        if value is not None:
-            if self._selectible:
-                if value.selected:
-                    if isAdding:
-                        parent._selection.add(value)
-                    else:
-                        parent._selection.remove(value)
-                    parent._selectedPaths = parent._selectionBounds = None
-            else:
-                if isAdding:
-                    value.selected = False
-        else:
-            if isAdding is not None:
-                parent.selected = False
-        # Glyph
-        glyph = parent._parent
-        if glyph is not None:
-            glyph._lastModified = time()
-
-    def append(self, value):
-        self._sequence.append(value)
-        #
-        self.applyChange(value, True)
-
-    # we don't implement clear()
-
-    def extend(self, values):
-        self._sequence.extend(values)
-        for value in values:
-            self.applyChange(value, True)
-
-    def insert(self, index, value):
-        self._sequence.insert(index, value)
-        #
-        self.applyChange(value, True)
-
-    def pop(self, index=-1):
-        value = self._sequence.pop(index)
-        #
-        self.applyChange(value, False)
-        #
-        return value
-
-    def remove(self, value):
-        self._sequence.remove(value)
-        #
-        self.applyChange(value, False)
-
-
-# this will work for
-# layer_anchors, glyph_layers
-class TrackingDictList(TaggingDictList):
-    __slots__ = ()
-
-    _getattr = getattr
-    _strict = False
-
-    def __delitem__(self, key):
-        sequence = self._sequence
-        if isinstance(key, str):
-            prop = self._property
-            for index, value in enumerate(sequence):
-                if self._getattr(value, prop) == key:
-                    value = sequence[index]
-                    del sequence[index]
-                    self.applyChange(value, False)
-                    return
-            raise KeyError(key)
-        value = sequence[key]
-        del sequence[key]
-        #
+        list_ = self._list
+        value = list_[key]
+        del list_[key]
         if key.__class__ is slice:
             for v in value:
-                self.applyChange(v, False)
+                v._parent = None
         else:
-            self.applyChange(value, False)
+            value._parent = None
+        self.applyChange()
+
+    def __getitem__(self, key):
+        return self._list[key]
+
+    def __len__(self):
+        return len(self._list)
 
     def __setitem__(self, key, value):
-        if isinstance(key, str):
-            parent = self._parent
-            prop = self._property
-            existing = value._parent == parent
-            if existing and self._getattr(value, prop) == key:
-                return
-            setattr(value, prop, key)
-            sequence = self._sequence
-            for index, value_ in enumerate(sequence):
-                if value_ == value:
-                    delIndex = index
-                elif self._getattr(value_, prop) == key:
-                    sequence[index] = value
-                    if not existing:
-                        self.applyChange(value, True)
-                        return
-            if existing:
-                del sequence[delIndex]
-            else:
-                sequence.append(value)
-            self.applyChange(value, True)
-            return
-        # we don't implement non-str __setitem__
-        raise KeyError("indices must be str, not %s" % key.__class__.__name__)
-
-    def applyChange(self, value=None, isAdding=None):
+        self._list[key] = value
         parent = self._parent
-        if value is not None:
-            if isAdding:
-                value._parent = parent
-            else:
-                value._parent = None
-        # Layer?
-        if hasattr(parent, "_selectionBounds"):
-            # the first parent is Layer
-            # handle Layer, then shift our parent to Glyph
-            if value is not None:
-                if value.selected:
-                    if isAdding:
-                        parent._selection.add(value)
-                    else:
-                        parent._selection.remove(value)
-                    parent._selectionBounds = None
-            else:
-                if isAdding is not None:
-                    parent.selected = False
-            parent = parent._parent
-            if parent is None:
-                return
-        # Glyph
-        parent._lastModified = time()
-
-    def append(self, value):
-        parent = self._parent
-        if value._parent == parent:
-            return
-        value._parent = parent
-        sequence = self._sequence
-        if self._strict:
-            prop = self._property
-            propValue = self._getattr(value, prop)
-            for index, value_ in enumerate(sequence):
-                if self._getattr(value_, prop) == propValue:
-                    sequence[index] = value
-                    self.applyChange(value, True)
-                    return
-        sequence.append(value)
-        self.applyChange(value, True)
-
-    # we don't implement clear()
-
-    # we don't implement extend()
+        if key.__class__ is slice:
+            for v in value:
+                v._parent = parent
+        else:
+            value._parent = parent
+        self.applyChange()
 
     def insert(self, index, value):
-        self._sequence.insert(index, value)
-        #
-        self.applyChange(value, True)
+        value._parent = self._parent
+        self._list.insert(index, value)
+        self.applyChange()
 
-    def pop(self, index=-1):
-        value = self._sequence.pop(index)
-        #
-        self.applyChange(value, False)
-        #
-        return value
+    # aux methods
 
-    def remove(self, value):
-        self._sequence.remove(value)
-        #
-        self.applyChange(value, False)
+    def __iter__(self):
+        return iter(self._list)
+
+    def __repr__(self):
+        return repr(self._list)
+
+    def __reversed__(self):
+        return reversed(self._list)
+
+# ---------------
+# Specializations
+# ---------------
+
+# Font
 
 
-class TrackingDict(TaggingDict):
+class FontAxesDict(TrackingDict):
     __slots__ = ()
 
+    _attr = "tag"
+    _property = "_axes"
+
+
+class FontFeaturesDict(TrackingDict):
+    __slots__ = ()
+
+    _attr = "tag"
+    _property = "_features"
+
+    def applyChange(self):
+        font = self._parent
+        font._layoutEngine = None
+
+
+class FontFeatureClassesDict(TrackingDict):
+    __slots__ = ()
+
+    _attr = "name"
+    _property = "_featureClasses"
+
+    def applyChange(self):
+        font = self._parent
+        font._layoutEngine = None
+
+
+class FontFeatureHeadersDict(TrackingDict):
+    __slots__ = ()
+
+    _attr = "description"
+    _property = "_featureHeaders"
+
+    def applyChange(self):
+        font = self._parent
+        font._layoutEngine = None
+
+
+class FontGlyphsDict(TrackingDict):
+    __slots__ = ()
+
+    _attr = "name"
+    _property = "_glyphs"
+
+    def applyChange(self):
+        font = self._parent
+        font._cmap = font._layoutEngine = None
+
+
+# Note: when adding or deleting a master, do we cycle
+# through all glyphs to add/remove corresponding master layers?
+class FontMastersList(TrackingList):
+    __slots__ = ()
+
+    _property = "_masters"
+
+
+class FontInstancesList(TrackingList):
+    __slots__ = ()
+
+    _property = "_instances"
+
+# Glyph
+
+
+class GlyphLayersList(TrackingList):
+    __slots__ = ()
+
+    _property = "_layers"
+
+    def applyChange(self):
+        glyph = self._parent
+        glyph._lastModified = time()
+
+    # make foreground layer always reachable
+    # -- should this be out of list and on glyph.masterForId() or so
+    def __getitem__(self, key):
+        try:
+            return self._list[key]
+        except IndexError:
+            if key == 0:
+                glyph = self._parent
+                font = glyph._parent
+                if font is not None:
+                    from tfont.objects.layer import Layer  # XXX lame
+                    layer = Layer(
+                        masterId=font._masters[0].id, masterLayer=True)
+                    layer._parent = glyph
+                    self._list.append(layer)
+                    return layer
+            raise
+
+# Layer
+
+
+class LayerAnchorsDict(TrackingDict):
+    __slots__ = ()
+
+    _attr = "name"
+    _property = "_anchors"
+
+    def applyChange(self):
+        layer = self._parent
+        layer._bounds = None
+        glyph = layer._parent
+        if glyph is None:
+            return
+        glyph._lastModified = time()
+
     def __delitem__(self, key):
-        del self._sequence[key]
-        #
-        parent = self._parent
-        while not hasattr(parent, "_lastModified"):
-            parent = parent._parent
-        parent._lastModified = time()
+        dict_ = self._dict
+        value = dict_[key]
+        del dict_[key]
+        value._parent = None
+        if value.selected:
+            layer = self._parent._parent
+            if layer is not None:
+                layer._selection.remove(value)
+                layer._selectionBounds = None
+        self.applyChange()
 
     def __setitem__(self, key, value):
-        # do we got same-value elision?
-        self._sequence[key] = value
-        #
         parent = self._parent
-        while not hasattr(parent, "_lastModified"):
-            parent = parent._parent
-        parent._lastModified = time()
+        if value._parent is parent:
+            oldKey = getattr(value, self._attr, key)
+            del self._dict[oldKey]
+        else:
+            value._parent = parent
+        obj_setattr(value, self._attr, key)
+        self._dict[key] = value
+        if value.selected:
+            layer = self._parent._parent
+            if layer is not None:
+                layer._selection.add(value)
+                layer._selectionBounds = None
+        self.applyChange()
 
-    # we don't implement clear()
+    def popitem(self):
+        item = self._dict.popitem()
+        value = item[1]
+        value._parent = None
+        if value.selected:
+            layer = self._parent._parent
+            if layer is not None:
+                layer._selection.remove(value)
+                layer._selectionBounds = None
+        self.applyChange()
+        return item
 
-    # we don't implement pop()
 
-    # we don't implement update()
+def _Layer_selectible_delitem(self, key):
+    list_ = self._list
+    value = list_[key]
+    del list_[key]
+    layer = self._parent
+    if key.__class__ is slice:
+        for v in value:
+            v._parent = None
+            if v.selected:
+                layer._selection.remove(v)
+                layer._selectionBounds = None
+    else:
+        value._parent = None
+        if value.selected:
+            layer._selection.remove(value)
+            layer._selectionBounds = None
+    self.applyChange()
+
+
+def _Layer_selectible_setitem(self, key, value):
+    self._list[key] = value
+    layer = self._parent
+    if key.__class__ is slice:
+        for v in value:
+            v._parent = layer
+            if v.selected:
+                layer._selection.add(v)
+                layer._selectionBounds = None
+    else:
+        value._parent = layer
+        if value.selected:
+            layer._selection.add(value)
+            layer._selectionBounds = None
+    self.applyChange()
+
+
+def _Layer_selectible_insert(self, index, value):
+    self._list.insert(index, value)
+    value._parent = layer = self._parent
+    if value.selected:
+        layer._selection.add(value)
+        layer._selectionBounds = None
+    self.applyChange()
+
+
+class LayerComponentsList(TrackingList):
+    __slots__ = ()
+
+    _property = "_components"
+
+    def applyChange(self):
+        layer = self._parent
+        layer._bounds = None
+        glyph = layer._parent
+        if glyph is None:
+            return
+        glyph._lastModified = time()
+
+    __delitem__ = _Layer_selectible_delitem
+
+    __setitem__ = _Layer_selectible_setitem
+
+    insert = _Layer_selectible_insert
+
+
+class LayerGuidelinesList(TrackingList):
+    __slots__ = ()
+
+    _property = "_guidelines"
+
+    def applyChange(self):
+        layer = self._parent
+        layer._bounds = None
+        glyph = layer._parent
+        if glyph is None:
+            return
+        glyph._lastModified = time()
+
+    __delitem__ = _Layer_selectible_delitem
+
+    __setitem__ = _Layer_selectible_setitem
+
+    insert = _Layer_selectible_insert
+
+
+class LayerPathsList(TrackingList):
+    __slots__ = ()
+
+    _property = "_paths"
+
+    def applyChange(self):
+        layer = self._parent
+        layer._bounds = layer._closedGraphicsPath = layer._openGraphicsPath = \
+            None
+        glyph = layer._parent
+        if glyph is None:
+            return
+        glyph._lastModified = time()
+
+    def __delitem__(self, key):
+        list_ = self._list
+        value = list_[key]
+        del list_[key]
+        layer = self._parent
+        layer._selectedPaths = None
+        if key.__class__ is slice:
+            for v in value:
+                v._parent = None
+        else:
+            value._parent = None
+        self.applyChange()
+
+    def __setitem__(self, key, value):
+        self._list[key] = value
+        layer = self._parent
+        layer._selectedPaths = None
+        if key.__class__ is slice:
+            for v in value:
+                v._parent = layer
+        else:
+            value._parent = layer
+        self.applyChange()
+
+    def insert(self, index, value):
+        self._list.insert(index, value)
+        value._parent = layer = self._parent
+        layer._selectedPaths = None
+        self.applyChange()
+
+# Path
+
+
+class PathPointsList(TrackingList):
+    __slots__ = ()
+
+    _property = "_points"
+
+    def applyChange(self):
+        path = self._parent
+        path._bounds = path._graphicsPath = None
+        layer = path._parent
+        if layer is None:
+            return
+        layer._bounds = layer._closedGraphicsPath = layer._openGraphicsPath = \
+            None
+        glyph = layer._parent
+        if glyph is None:
+            return
+        glyph._lastModified = time()
+
+    def __delitem__(self, key):
+        list_ = self._list
+        value = list_[key]
+        del list_[key]
+        layer = self._parent._parent
+        if key.__class__ is slice:
+            for v in value:
+                v._parent = None
+                if layer is not None and v.selected:
+                    layer._selection.remove(v)
+                    layer._selectedPaths = layer._selectionBounds = None
+        else:
+            value._parent = None
+            if layer is not None and value.selected:
+                layer._selection.remove(value)
+                layer._selectedPaths = layer._selectionBounds = None
+        self.applyChange()
+
+    def __setitem__(self, key, value):
+        self._list[key] = value
+        parent = self._parent
+        layer = parent._parent
+        if key.__class__ is slice:
+            for v in value:
+                v._parent = parent
+                if layer is not None and v.selected:
+                    layer._selection.add(v)
+                    layer._selectedPaths = layer._selectionBounds = None
+        else:
+            value._parent = parent
+            if layer is not None and value.selected:
+                layer._selection.add(value)
+                layer._selectedPaths = layer._selectionBounds = None
+        self.applyChange()
+
+    def insert(self, index, value):
+        self._list.insert(index, value)
+        value._parent = parent = self._parent
+        if value.selected:
+            layer = parent._parent
+            if layer is not None:
+                layer._selection.add(value)
+                layer._selectedPaths = layer._selectionBounds = None
+        self.applyChange()

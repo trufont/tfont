@@ -1,5 +1,5 @@
 import attr
-from tfont.objects.misc import obj_setattr
+from tfont.util.tracker import obj_setattr
 from time import time
 from typing import Any, Optional, Union
 

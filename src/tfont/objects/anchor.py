@@ -1,14 +1,14 @@
 import attr
-from tfont.objects.misc import obj_setattr
+from tfont.util.tracker import obj_setattr
 from time import time
 from typing import Optional, Union
 
 
 @attr.s(cmp=False, repr=False, slots=True)
 class Anchor:
-    name: str = attr.ib()
     x: Union[int, float] = attr.ib()
     y: Union[int, float] = attr.ib()
+    name: str = attr.ib(default="")
 
     _parent: Optional[object] = attr.ib(default=None, init=False)
     selected: bool = attr.ib(default=False, init=False)

@@ -1,102 +1,21 @@
 import attr
-from copy import copy
 from functools import partial
 from tfont.objects.anchor import Anchor
 from tfont.objects.component import Component
 from tfont.objects.guideline import Guideline
 from tfont.objects.misc import Transformation, obj_setattr
 from tfont.objects.path import Path
-from tfont.util.tracker import TrackingDictList, TrackingList
+from tfont.util.slice import slicePaths
+from tfont.util.tracker import (
+    LayerAnchorsDict, LayerComponentsList, LayerGuidelinesList, LayerPathsList)
 from time import time
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
-
-
-def bytwo(iterable):
-    i = iter(iterable)
-    while True:
-        yield next(i), next(i)
-
-
-def makePath(endSegment, segmentsMap, path=None, targetSegment=None):
-    if path is None:
-        path = Path()
-    if targetSegment is None:
-        targetSegment = endSegment
-    iterator = segmentsMap.pop(targetSegment)
-    points = path._points
-    point = copy(next(iterator).onCurve)
-    point.smooth = False
-    point.type = "line"
-    point._parent = path
-    points.append(point)
-    for segment in iterator:
-        isJump = segment in segmentsMap
-        isLast = segment is endSegment
-        for point in segment.penPoints:
-            # original segment will be trashed so we only need to
-            # copy the overlapping section
-            if isJump or isLast and point.type is not None:
-                point = copy(point)
-                point.smooth = False
-            point._parent = path
-            points.append(point)
-        if isLast:
-            break
-        elif isJump:
-            makePath(endSegment, segmentsMap, path, segment)
-            break
-    return path
-
-
-def segmentSqDist(x1, y1, item):
-    p2 = item[0].onCurve
-    dx, dy = p2.x - x1, p2.y - y1
-    return dx*dx + dy*dy
 
 
 def squaredDistance(x1, y1, item):
     x2, y2 = item
     dx, dy = x2 - x1, y2 - y1
     return dx*dx + dy*dy
-
-
-class LayerAnchorsDictList(TrackingDictList):
-    __slots__ = ()
-
-    _property = "name"
-    _strict = True
-
-    @property
-    def _sequence(self):
-        return self._parent._anchors
-
-
-class LayerComponentsList(TrackingList):
-    __slots__ = ()
-
-    @property
-    def _sequence(self):
-        return self._parent._components
-
-
-class LayerGuidelinesList(TrackingList):
-    __slots__ = ()
-
-    _graphics = False
-
-    @property
-    def _sequence(self):
-        return self._parent._guidelines
-
-
-class LayerPathsList(TrackingList):
-    __slots__ = ()
-
-    _selectible = False
-
-    @property
-    def _sequence(self):
-        return self._parent._paths
 
 
 @attr.s(cmp=False, repr=False, slots=True)
@@ -111,7 +30,7 @@ class Layer:
     height: Union[int, float] = attr.ib(default=0)
     yOrigin: Union[int, float] = attr.ib(default=0)
 
-    _anchors: List[Anchor] = attr.ib(default=attr.Factory(list))
+    _anchors: Dict[str, Anchor] = attr.ib(default=attr.Factory(dict))
     _components: List[Component] = attr.ib(default=attr.Factory(list))
     _guidelines: List[Guideline] = attr.ib(default=attr.Factory(list))
     _paths: List[Path] = attr.ib(default=attr.Factory(list))
@@ -129,7 +48,7 @@ class Layer:
     _selectionBounds: Optional[Tuple] = attr.ib(default=None, init=False)
 
     def __attrs_post_init__(self):
-        for anchor in self._anchors:
+        for anchor in self._anchors.values():
             anchor._parent = self
         for component in self._components:
             component._parent = self
@@ -161,9 +80,6 @@ class Layer:
             if glyph is not None and key[0] != "_":
                 oldValue = getattr(self, key)
                 if value != oldValue:
-                    if key == "id":
-                        glyph.layers[value] = self
-                        return
                     obj_setattr(self, key, value)
                     glyph._lastModified = time()
                 return
@@ -171,7 +87,7 @@ class Layer:
 
     @property
     def anchors(self):
-        return LayerAnchorsDictList(self)
+        return LayerAnchorsDict(self)
 
     @property
     def bottomMargin(self):
@@ -296,7 +212,7 @@ class Layer:
     def master(self):
         parent = self._parent
         if parent is not None:
-            return parent._parent.masters[self.masterId]
+            return parent._parent.masterForId(self.masterId)
         return None
 
     @property
@@ -304,7 +220,7 @@ class Layer:
         if self.masterLayer:
             parent = self._parent
             if parent is not None:
-                return parent._parent.masters[self.masterId].name
+                return parent._parent.masterForId(self.masterId).name
         return self._name
 
     @name.setter
@@ -464,53 +380,9 @@ class Layer:
         paths = self._paths
         if not paths:
             return
-        # cut and store new segments
-        # TODO: handle open contours
-        pathSegments = []
-        splitSegments = []
-        for path in paths:
-            segments = path.segments
-            index = 0
-            while index < len(segments):
-                segment = segments[index]
-                intersections = segment.intersectLine(x1, y1, x2, y2)
-                if not intersections:
-                    index += 1
-                    continue
-                # TODO: handle more
-                intersection = intersections[0]
-                splitSegments.append((
-                    segments.splitSegment(index, intersection[-1]),
-                    segments.iterfrom(index)
-                ))
-                index += 2
-            pathSegments.append(segments)
-        size = len(splitSegments)
-        if size < 2:
+        newPaths = slicePaths(self)
+        if not newPaths:
             return
-        # TODO: use bw area for odd len elision
-        # -- a temp solution could use graphicsPath.Contains
-        # won't work well for overlapping paths though
-        if size % 2:
-            del splitSegments[-1]
-        # sort newSegments by distance of their onCurve from (x1, y1)
-        # and build the graph of pairs
-        segmentsMap = {}
-        for (segA, iterA), (segB, iterB) in bytwo(
-                sorted(splitSegments, key=partial(segmentSqDist, x1, y1))):
-            segmentsMap[segA] = iterB
-            segmentsMap[segB] = iterA
-        # draw the new paths
-        newPaths = []
-        for path, segments in zip(paths, pathSegments):
-            newPath = None
-            for segment in segments:
-                if segment in segmentsMap:
-                    newPath = makePath(segment, segmentsMap)
-                    newPath._parent = self
-                    newPaths.append(newPath)
-            if newPath is None:
-                newPaths.append(path)
         self._paths = newPaths
         # notify
         self.paths.applyChange()

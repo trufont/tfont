@@ -73,8 +73,8 @@ class Component:
     def layer(self):
         layer = self._parent
         try:
-            return layer._parent._parent.glyphs[self.glyphName].layers[
-                layer.masterId]
+            return layer._parent._parent.glyphs[self.glyphName].layerForId(
+                layer.masterId)
         except (AttributeError, KeyError):
             pass
 

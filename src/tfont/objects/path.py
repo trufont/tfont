@@ -4,16 +4,8 @@ from fontTools.misc import bezierTools
 import pprint
 from tfont.objects.point import Point
 from tfont.util import bezierMath
-from tfont.util.tracker import TrackingList
+from tfont.util.tracker import PathPointsList
 from typing import Any, List, Optional, Tuple
-
-
-class PathPointsList(TrackingList):
-    __slots__ = ()
-
-    @property
-    def _sequence(self):
-        return self._parent._points
 
 
 @attr.s(cmp=False, repr=False, slots=True)
@@ -151,6 +143,7 @@ class Path:
         return changed
 
 
+# TODO use abc superclass
 @attr.s(cmp=False, repr=False, slots=True)
 class SegmentsList:
     _points: PathPointsList = attr.ib()

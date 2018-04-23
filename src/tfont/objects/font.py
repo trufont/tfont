@@ -5,83 +5,10 @@ from tfont.objects.feature import Feature, FeatureClass, FeatureHeader
 from tfont.objects.glyph import Glyph
 from tfont.objects.instance import Instance
 from tfont.objects.master import Master, fontMasterList
-from tfont.util.tracker import TaggingDictList, TaggingList
+from tfont.util.tracker import (
+    FontAxesDict, FontFeaturesDict, FontFeatureClassesDict,
+    FontFeatureHeadersDict, FontGlyphsDict, FontInstancesList, FontMastersList)
 from typing import Any, Dict, List, Optional
-
-
-class FontAxesDictList(TaggingDictList):
-    __slots__ = ()
-
-    _property = "tag"
-    _strict = True
-
-    @property
-    def _sequence(self):
-        return self._parent._axes
-
-
-class FontFeaturesDictList(TaggingDictList):
-    __slots__ = ()
-
-    _property = "tag"
-    _strict = True
-
-    @property
-    def _sequence(self):
-        return self._parent._features
-
-
-class FontFeatureClassesDictList(TaggingDictList):
-    __slots__ = ()
-
-    _property = "name"
-    _strict = True
-
-    @property
-    def _sequence(self):
-        return self._parent._featureClasses
-
-
-class FontFeatureHeadersDictList(TaggingDictList):
-    __slots__ = ()
-
-    _property = "description"
-    _strict = True
-
-    @property
-    def _sequence(self):
-        return self._parent._featureHeaders
-
-
-class FontGlyphsDictList(TaggingDictList):
-    __slots__ = ()
-
-    _property = "name"
-    _strict = True
-
-    @property
-    def _sequence(self):
-        return self._parent._glyphs
-
-
-# Note: when adding or deleting a master, do we cycle
-# through all glyphs to add/remove corresponding master layers?
-class FontMastersDictList(TaggingDictList):
-    __slots__ = ()
-
-    _property = "id"
-
-    @property
-    def _sequence(self):
-        return self._parent._masters
-
-
-class FontInstancesList(TaggingList):
-    __slots__ = ()
-
-    @property
-    def _sequence(self):
-        return self._parent._instances
 
 
 @attr.s(cmp=False, repr=False, slots=True)
@@ -89,11 +16,13 @@ class Font:
     date: datetime = attr.ib(default=attr.Factory(datetime.utcnow))
     familyName: str = attr.ib(default="New Font")
 
-    _axes: List[Axis] = attr.ib(default=attr.Factory(list))
-    _features: List[Feature] = attr.ib(default=attr.Factory(list))
-    _featureClasses: List[FeatureClass] = attr.ib(default=attr.Factory(list))
-    _featureHeaders: List[FeatureHeader] = attr.ib(default=attr.Factory(list))
-    _glyphs: List[Glyph] = attr.ib(default=attr.Factory(list))
+    _axes: Dict[str, Axis] = attr.ib(default=attr.Factory(dict))
+    _features: Dict[str, Feature] = attr.ib(default=attr.Factory(dict))
+    _featureClasses: Dict[
+        str, FeatureClass] = attr.ib(default=attr.Factory(dict))
+    _featureHeaders: Dict[
+        str, FeatureHeader] = attr.ib(default=attr.Factory(dict))
+    _glyphs: Dict[str, Glyph] = attr.ib(default=attr.Factory(dict))
     _masters: List[Master] = attr.ib(default=attr.Factory(fontMasterList))
     _instances: List[Instance] = attr.ib(default=attr.Factory(list))
 
@@ -114,9 +43,15 @@ class Font:
     _selectedMaster: int = attr.ib(default=0, init=False)
 
     def __attrs_post_init__(self):
-        for axis in self._axes:
+        for axis in self._axes.values():
             axis._parent = self
-        for glyph in self._glyphs:
+        for feature in self._features.values():
+            feature._parent = self
+        for featCls in self._featureClasses.values():
+            featCls._parent = self
+        for featHdr in self._featureHeaders.values():
+            featHdr._parent = self
+        for glyph in self._glyphs.values():
             glyph._parent = self
         for master in self._masters:
             master._parent = self
@@ -130,23 +65,23 @@ class Font:
 
     @property
     def axes(self):
-        return FontAxesDictList(self)
+        return FontAxesDict(self)
 
     @property
     def features(self):
-        return FontFeaturesDictList(self)
+        return FontFeaturesDict(self)
 
     @property
     def featureClasses(self):
-        return FontFeatureClassesDictList(self)
+        return FontFeatureClassesDict(self)
 
     @property
     def featureHeaders(self):
-        return FontFeatureHeadersDictList(self)
+        return FontFeatureHeadersDict(self)
 
     @property
     def glyphs(self):
-        return FontGlyphsDictList(self)
+        return FontGlyphsDict(self)
 
     @property
     def instances(self):
@@ -161,14 +96,14 @@ class Font:
 
     @property
     def masters(self):
-        return FontMastersDictList(self)
+        return FontMastersList(self)
 
     @property
     def modified(self):
         modified = self._modified
         # undo will challenge that assumption,
         if not modified:
-            for glyph in self._glyphs:
+            for glyph in self._glyphs.values():
                 if glyph._lastModified is not None:
                     modified = self._modified = True
                     break
@@ -189,7 +124,7 @@ class Font:
         cache = self._cmap
         if cache is None:
             cache = self._cmap = {}
-            for index, glyph in enumerate(self._glyphs):
+            for index, glyph in enumerate(self._glyphs.values()):
                 uni = glyph.unicode
                 if uni is None:
                     continue
@@ -199,7 +134,14 @@ class Font:
 
     # maybe we could only have glyphForName and inline this func
     def glyphIdForName(self, name):
-        for index, glyph in enumerate(self._glyphs):
+        for index, glyph in enumerate(self._glyphs.values()):
             if glyph.name == name:
                 return index
         return None
+
+    def masterForId(self, key):
+        masters = self._masters
+        for master in masters:
+            if master.id == key:
+                return master
+        raise KeyError(key)

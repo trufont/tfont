@@ -1,8 +1,7 @@
 import attr
+from tfont.util.tracker import obj_setattr
 from typing import Any, Iterable, Optional, Tuple, Union
 import uuid
-
-obj_setattr = object.__setattr__
 
 
 @attr.s(slots=True)

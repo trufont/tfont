@@ -1,44 +1,13 @@
 import attr
 from tfont.objects.layer import Layer
-from tfont.objects.misc import obj_setattr
-from tfont.util.tracker import TrackingDictList
+from tfont.util.tracker import GlyphLayersList, obj_setattr
 from time import time
 from typing import Any, Dict, List, Optional, Tuple
 
 
-class GlyphLayersDictList(TrackingDictList):
-    __slots__ = ()
-
-    _getattr = lambda obj, attr: getattr(
-        obj, attr) if obj.masterLayer else None
-    _property = "masterId"
-
-    def __init__(self, parent):
-        self._parent = parent
-        font = parent._parent
-        if font is None:
-            return
-        sequence = self._sequence
-        count = sum(layer.masterLayer for layer in sequence)
-        masters = font._masters
-        if count >= len(masters):
-            return
-        for master in masters:
-            # lame, this is n^2
-            # we should spell out the lookup
-            if master.id not in self:
-                layer = Layer(masterId=master.id, masterLayer=True)
-                layer._parent = parent
-                sequence.append(layer)
-
-    @property
-    def _sequence(self):
-        return self._parent._layers
-
-
 @attr.s(cmp=False, repr=False, slots=True)
 class Glyph:
-    name: str = attr.ib()
+    name: str = attr.ib(default="")
     unicodes: List[str] = attr.ib(default=attr.Factory(list))
 
     leftKerningGroup: str = attr.ib(default="")
@@ -98,7 +67,7 @@ class Glyph:
 
     @property
     def layers(self):
-        return GlyphLayersDictList(self)
+        return GlyphLayersList(self)
 
     @property
     def unicode(self):
@@ -106,3 +75,13 @@ class Glyph:
         if unicodes:
             return unicodes[0]
         return None
+
+    def layerForId(self, key):
+        layers = self._layers
+        for layer in layers:
+            if layer.masterLayer and layer.masterId == key:
+                return layer
+        layer = Layer(masterId=key, masterLayer=True)
+        layer._parent = self
+        layers.append(layer)
+        return layer
