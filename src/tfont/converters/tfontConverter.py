@@ -15,6 +15,7 @@ from tfont.objects.point import Point
 from typing import Dict, Union
 
 
+# TODO we should have a custom type for caching dicts
 def _structure_seq_dict(self, attr, data, type_):
     cls = type_.__args__[1]  # dict key type
     return dict((e[attr], self.structure(e, cls)) for e in data)
@@ -159,6 +160,7 @@ class TFontConverter(cattr.Converter):
             rv = {".formatVersion": self.version}
         else:
             rv = {}
+        override = cls is Font or cls is Layer
         for a in attrs:
             # skip internal attrs
             if not a.init:
@@ -172,8 +174,17 @@ class TFontConverter(cattr.Converter):
                 # skip empty collections
                 if isinstance(v, Collection):
                     continue
+            # force our specialized types overrides
+            type_ = v.__class__
+            if override:
+                t = a.type
+                try:
+                    if t.__origin__ is Dict and t.__args__[0] is str:
+                        type_ = t
+                except (AttributeError, TypeError):
+                    pass
             # remove underscore from private attrs
             if name[0] == "_":
                 name = name[1:]
-            rv[name] = dispatch(v.__class__)(v)
+            rv[name] = dispatch(type_)(v)
         return rv

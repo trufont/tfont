@@ -77,10 +77,16 @@ class Glyph:
         return None
 
     def layerForId(self, key):
+        if key is None:
+            font = self._parent
+            if font is not None:
+                key = font.selectedMaster.id
         layers = self._layers
         for layer in layers:
             if layer.masterLayer and layer.masterId == key:
                 return layer
+        if not key or key.__class__ is not str:
+            raise ValueError("invalid id %r" % key)
         layer = Layer(masterId=key, masterLayer=True)
         layer._parent = self
         layers.append(layer)

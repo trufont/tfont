@@ -46,11 +46,6 @@ class TrackingDict(MutableMapping):
 
     # aux methods
 
-    def __contains__(self, value):
-        key = getattr(value, self._attr)
-        v = self._dict[key]
-        return v is value or v == value
-
     def __repr__(self):
         return repr(self._dict)
 
@@ -211,24 +206,6 @@ class GlyphLayersList(TrackingList):
     def applyChange(self):
         glyph = self._parent
         glyph._lastModified = time()
-
-    # make foreground layer always reachable
-    # -- should this be out of list and on glyph.masterForId() or so
-    def __getitem__(self, key):
-        try:
-            return self._list[key]
-        except IndexError:
-            if key == 0:
-                glyph = self._parent
-                font = glyph._parent
-                if font is not None:
-                    from tfont.objects.layer import Layer  # XXX lame
-                    layer = Layer(
-                        masterId=font._masters[0].id, masterLayer=True)
-                    layer._parent = glyph
-                    self._list.append(layer)
-                    return layer
-            raise
 
 # Layer
 
