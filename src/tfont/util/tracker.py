@@ -6,8 +6,7 @@ obj_setattr = object.__setattr__
 
 class TrackingDict(MutableMapping):
     """
-    Note: dict bears a value iterator (given that keys are just cached attrs),
-    for symmetry contains also operates on values.
+    Note: dict bears a value iterator (given that keys are just cached attrs).
     """
     __slots__ = "_dict", "_parent"
 

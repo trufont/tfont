@@ -380,7 +380,7 @@ class Layer:
         paths = self._paths
         if not paths:
             return
-        newPaths = slicePaths(self)
+        newPaths = slicePaths(self, x1, y1, x2, y2)
         if not newPaths:
             return
         self._paths = newPaths

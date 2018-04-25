@@ -224,12 +224,8 @@ class SegmentsList:
             p.x, p.y = p7
             p = points[start+2]
             p.x, p.y = p8
-            # XXX can't setitem w tracker
-            points._sequence[start:start] = pts = [
+            points[start:start] = pts = [
                 Point(*p2), Point(*p3), Point(*p4, "curve", smooth=True)]
-            for point in pts:
-                point._parent = points._parent
-            # but now we need to notify
             newSegment = copy(segment)
             segments.insert(index, newSegment)
             for seg in segments[index+1:]:
