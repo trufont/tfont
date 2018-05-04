@@ -224,7 +224,7 @@ class SegmentsList:
             p.x, p.y = p7
             p = points[start+2]
             p.x, p.y = p8
-            points[start:start] = pts = [
+            points[start:start] = [
                 Point(*p2), Point(*p3), Point(*p4, "curve", smooth=True)]
             newSegment = copy(segment)
             segments.insert(index, newSegment)

@@ -49,14 +49,19 @@ class Component:
         except (AttributeError, TypeError):
             return
         transformation = self.transformation
-        return (l * transformation.xScale +
-                b * transformation.yxScale + transformation.xOffset,
-                b * transformation.yScale +
-                l * transformation.xyScale + transformation.yOffset,
-                r * transformation.xScale +
-                t * transformation.yxScale + transformation.xOffset,
-                t * transformation.yScale +
-                r * transformation.xyScale + transformation.yOffset)
+        l, b, r, t = (l * transformation.xScale +
+                      b * transformation.yxScale + transformation.xOffset,
+                      b * transformation.yScale +
+                      l * transformation.xyScale + transformation.yOffset,
+                      r * transformation.xScale +
+                      t * transformation.yxScale + transformation.xOffset,
+                      t * transformation.yScale +
+                      r * transformation.xyScale + transformation.yOffset)
+        if l > r:
+            l, r = r, l
+        if b > t:
+            t, b = b, t
+        return l, b, r, t
 
     @property
     def closedGraphicsPath(self):

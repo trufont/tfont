@@ -9,6 +9,7 @@ from tfont.objects.axis import Axis
 from tfont.objects.feature import Feature, FeatureClass, FeatureHeader
 from tfont.objects.font import Font
 from tfont.objects.glyph import Glyph
+from tfont.objects.layer import Layer
 from tfont.objects.misc import AlignmentZone, Transformation
 from tfont.objects.path import Path
 from tfont.objects.point import Point
@@ -24,11 +25,11 @@ def _structure_seq_dict(self, attr, data, type_):
 def _structure_Path(data, cls):
     points = []
     for element in data:
-        if element.__class__ is list:
+        if element.__class__ is dict:
+            point._extraData = element
+        else:
             point = Point(*element)
             points.append(point)
-        else:
-            point._extraData = element
     return cls(points)
 
 
@@ -50,14 +51,32 @@ def _unstructure_Path(path):
     return data
 
 
+def _unstructure_Path_base(path):
+    data = []
+    for point in path._points:
+        ptType = point.type
+        if ptType is not None:
+            if point.smooth:
+                value = (point.x, point.y, ptType, True)
+            else:
+                value = (point.x, point.y, ptType)
+        else:
+            value = (point.x, point.y)
+        data.append(value)
+        extraData = point._extraData
+        if extraData:
+            data.append(extraData)
+    return data
+
+
 class TFontConverter(cattr.Converter):
-    __slots__ = "_font", "indent"
+    __slots__ = "_font", "_indent"
 
     version = 0
 
     def __init__(self, indent=0, **kwargs):
         super().__init__(**kwargs)
-        self.indent = indent
+        self._indent = indent
 
         # datetime
         dateFormat = '%Y-%m-%d %H:%M:%S'
@@ -69,14 +88,20 @@ class TFontConverter(cattr.Converter):
         self.register_structure_hook(Union[int, float], lambda d, _: d)
 
         structure_seq = lambda d, t: t(*d)
-        unstructure_seq = lambda o: RawJSON(dumps(tuple(o)))
-        self.register_unstructure_hook(tuple, unstructure_seq)
+        if indent is None:
+            unstructure_seq = lambda o: tuple(o)
+        else:
+            unstructure_seq = lambda o: RawJSON(dumps(tuple(o)))
+            self.register_unstructure_hook(tuple, unstructure_seq)
         # Alignment zone
         self.register_structure_hook(AlignmentZone, structure_seq)
         self.register_unstructure_hook(AlignmentZone, unstructure_seq)
         # Path
         self.register_structure_hook(Path, _structure_Path)
-        self.register_unstructure_hook(Path, _unstructure_Path)
+        if indent is None:
+            self.register_unstructure_hook(Path, _unstructure_Path_base)
+        else:
+            self.register_unstructure_hook(Path, _unstructure_Path)
         # Transformation
         self.register_structure_hook(Transformation, structure_seq)
         self.register_unstructure_hook(Transformation, unstructure_seq)
@@ -121,7 +146,7 @@ class TFontConverter(cattr.Converter):
     def save(self, font, path):
         d = self.unstructure(font)
         with open(path, 'w') as file:
-            json.dump(d, file, indent=self.indent)
+            json.dump(d, file, indent=self._indent)
 
     def structure_attrs_fromdict(self, obj, cl):
         conv_obj = obj.copy()  # Dict of converted parameters.

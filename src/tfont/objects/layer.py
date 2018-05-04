@@ -1,4 +1,5 @@
 import attr
+from datetime import datetime
 from functools import partial
 from tfont.objects.anchor import Anchor
 from tfont.objects.component import Component
@@ -360,6 +361,19 @@ class Layer:
             element.selected = False
         for guideline in self.master.guidelines:
             guideline.selected = False
+
+    def copy(self):
+        global TFontConverter
+        try:
+            TFontConverter
+        except NameError:
+            from tfont.converters.tfontConverter import TFontConverter
+        conv = TFontConverter(indent=None)
+        l = conv.structure(conv.unstructure(self), self.__class__)
+        l.masterLayer = False
+        l.name = datetime.now().strftime("%b %d %y – %H:%M")
+        l.visible = False
+        return l
 
     def decomposeComponents(self):
         for component in self._components:
