@@ -1,7 +1,6 @@
 import attr
 from tfont.util.tracker import obj_setattr
 from typing import Any, Iterable, Optional, Tuple, Union
-import uuid
 
 
 @attr.s(slots=True)
@@ -84,6 +83,3 @@ class Transformation:
                 element.x = x * self.xScale + y * self.yxScale + self.xOffset
                 element.y = y * self.yScale + x * self.xyScale + self.yOffset
         return changed
-
-
-uuid4_str = lambda: str(uuid.uuid4())

@@ -70,7 +70,7 @@ class Component:
     @property
     def glyph(self):
         try:
-            return self._parent._parent._parent.glyphs[self.glyphName]
+            return self._parent._parent._parent.glyphForName(self.glyphName)
         except (AttributeError, KeyError):
             pass
 
@@ -78,8 +78,8 @@ class Component:
     def layer(self):
         layer = self._parent
         try:
-            return layer._parent._parent.glyphs[self.glyphName].layerForId(
-                layer.masterId)
+            return layer._parent._parent.glyphForName(
+                self.glyphName).layerForMaster(layer.masterName)
         except (AttributeError, KeyError):
             pass
 

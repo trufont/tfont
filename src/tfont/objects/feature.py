@@ -95,9 +95,6 @@ class FeatureHeader:
             if font is not None and key[0] != "_":
                 oldValue = getattr(self, key)
                 if value != oldValue:
-                    if key == "name":
-                        font.featureHeaders[value] = self
-                        return
                     obj_setattr(self, key, value)
                     font._layoutEngine = None
                 return

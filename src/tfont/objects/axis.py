@@ -5,10 +5,10 @@ from typing import Optional
 
 @attr.s(cmp=False, repr=False, slots=True)
 class Axis:
-    minimum: int = attr.ib(default=0)
-    maximum: int = attr.ib(default=0)
-    default: int = attr.ib(default=0)
     tag: str = attr.ib(default="")
+    min: int = attr.ib(default=0)
+    max: int = attr.ib(default=0)
+    default: int = attr.ib(default=0)
     name: str = attr.ib(default="")
 
     _parent: Optional[object] = attr.ib(default=None, init=False)

@@ -4,10 +4,10 @@ from tfont.objects.axis import Axis
 from tfont.objects.feature import Feature, FeatureClass, FeatureHeader
 from tfont.objects.glyph import Glyph
 from tfont.objects.instance import Instance
-from tfont.objects.master import Master, fontMasterList
+from tfont.objects.master import Master, fontMasterDict
 from tfont.util.tracker import (
     FontAxesDict, FontFeaturesDict, FontFeatureClassesDict,
-    FontFeatureHeadersDict, FontGlyphsDict, FontInstancesList, FontMastersList)
+    FontFeatureHeadersList, FontGlyphsList, FontInstancesList, FontMastersDict)
 from typing import Any, Dict, List, Optional
 
 
@@ -20,10 +20,9 @@ class Font:
     _features: Dict[str, Feature] = attr.ib(default=attr.Factory(dict))
     _featureClasses: Dict[
         str, FeatureClass] = attr.ib(default=attr.Factory(dict))
-    _featureHeaders: Dict[
-        str, FeatureHeader] = attr.ib(default=attr.Factory(dict))
-    _glyphs: Dict[str, Glyph] = attr.ib(default=attr.Factory(dict))
-    _masters: List[Master] = attr.ib(default=attr.Factory(fontMasterList))
+    _featureHeaders: List[FeatureHeader] = attr.ib(default=attr.Factory(list))
+    _glyphs: List[Glyph] = attr.ib(default=attr.Factory(list))
+    _masters: Dict[str, Master] = attr.ib(default=attr.Factory(fontMasterDict))
     _instances: List[Instance] = attr.ib(default=attr.Factory(list))
 
     copyright: str = attr.ib(default="")
@@ -37,10 +36,10 @@ class Font:
 
     extraData: Dict = attr.ib(default=attr.Factory(dict))
 
-    _cmap: Optional[Any] = attr.ib(default=None, init=False)
+    _cmap: Optional[Dict[int, int]] = attr.ib(default=None, init=False)
     _layoutEngine: Optional[Any] = attr.ib(default=None, init=False)
     _modified: bool = attr.ib(default=False, init=False)
-    _selectedMaster: int = attr.ib(default=0, init=False)
+    _selectedMaster: Optional[str] = attr.ib(default=None, init=False)
 
     def __attrs_post_init__(self):
         for axis in self._axes.values():
@@ -49,11 +48,11 @@ class Font:
             feature._parent = self
         for featCls in self._featureClasses.values():
             featCls._parent = self
-        for featHdr in self._featureHeaders.values():
+        for featHdr in self._featureHeaders:
             featHdr._parent = self
-        for glyph in self._glyphs.values():
+        for glyph in self._glyphs:
             glyph._parent = self
-        for master in self._masters:
+        for master in self._masters.values():
             master._parent = self
         for instance in self._instances:
             instance._parent = self
@@ -77,11 +76,11 @@ class Font:
 
     @property
     def featureHeaders(self):
-        return FontFeatureHeadersDict(self)
+        return FontFeatureHeadersList(self)
 
     @property
     def glyphs(self):
-        return FontGlyphsDict(self)
+        return FontGlyphsList(self)
 
     @property
     def instances(self):
@@ -96,14 +95,14 @@ class Font:
 
     @property
     def masters(self):
-        return FontMastersList(self)
+        return FontMastersDict(self)
 
     @property
     def modified(self):
         modified = self._modified
         # undo will challenge that assumption,
         if not modified:
-            for glyph in self._glyphs.values():
+            for glyph in self._glyphs:
                 if glyph._lastModified is not None:
                     modified = self._modified = True
                     break
@@ -111,37 +110,36 @@ class Font:
 
     @property
     def selectedMaster(self):
-        # TODO when deleting a master, adjust self._selectedMaster
-        return self._masters[self._selectedMaster]
+        try:
+            return self._masters[self._selectedMaster]
+        except KeyError:
+            master = next(iter(self._masters.values()))
+            self._selectedMaster = master.name
+            return master
+
+    def glyphForName(self, name):
+        for glyph in self._glyphs:
+            if glyph.name == name:
+                return glyph
 
     def glyphForUnicode(self, value):
         gid = self.glyphIdForCodepoint(int(value, 16))
         if gid is not None:
             return self._glyphs[gid]
-        return None
 
     def glyphIdForCodepoint(self, value, default=None):
         cache = self._cmap
         if cache is None:
             cache = self._cmap = {}
-            for index, glyph in enumerate(self._glyphs.values()):
+            for index, glyph in enumerate(self._glyphs):
                 uni = glyph.unicode
-                if uni is None:
-                    continue
-                ch = int(uni, 16)
-                cache[ch] = index
+                if uni is not None:
+                    ch = int(uni, 16)
+                    cache[ch] = index
         return cache.get(value, default)
 
     # maybe we could only have glyphForName and inline this func
     def glyphIdForName(self, name):
-        for index, glyph in enumerate(self._glyphs.values()):
+        for index, glyph in enumerate(self._glyphs):
             if glyph.name == name:
                 return index
-        return None
-
-    def masterForId(self, key):
-        masters = self._masters
-        for master in masters:
-            if master.id == key:
-                return master
-        raise KeyError(key)

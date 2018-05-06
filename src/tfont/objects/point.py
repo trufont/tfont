@@ -2,6 +2,7 @@ import attr
 from tfont.util.tracker import obj_setattr
 from time import time
 from typing import Any, Dict, Optional, Union
+from uuid import uuid4
 
 
 @attr.s(cmp=False, repr=False, slots=True)
@@ -63,6 +64,26 @@ class Point:
         if extraData is None:
             extraData = self._extraData = {}
         return extraData
+
+    @property
+    def id(self):
+        extraData = self.extraData
+        try:
+            return extraData["id"]
+        except KeyError:
+            extraData["id"] = id_ = str(uuid4())
+            return id_
+
+    @property
+    def _id(self):
+        return self.extraData.get("id", "")
+
+    @_id.setter
+    def _id(self, value):
+        if value:
+            self.extraData["id"] = value
+        else:
+            self.extraData.pop("id", None)
 
     @property
     def path(self):

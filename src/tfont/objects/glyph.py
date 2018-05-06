@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 @attr.s(cmp=False, repr=False, slots=True)
 class Glyph:
-    name: str = attr.ib(default="")
+    name: str = attr.ib()
     unicodes: List[str] = attr.ib(default=attr.Factory(list))
 
     leftKerningGroup: str = attr.ib(default="")
@@ -42,9 +42,6 @@ class Glyph:
                                 and key != "selected":
                 oldValue = getattr(self, key)
                 if value != oldValue:
-                    if key == "name":
-                        font.glyphs[value] = self
-                        return
                     obj_setattr(self, key, value)
                     self._lastModified = time()
                 return
@@ -76,18 +73,22 @@ class Glyph:
             return unicodes[0]
         return None
 
-    def layerForId(self, key):
-        if key is None:
+    def layerForMaster(self, master):
+        if master is None:
             font = self._parent
             if font is not None:
-                key = font.selectedMaster.id
+                name = font.selectedMaster.name
+            else:
+                raise ValueError("unreachable fallback master")
+        elif master.__class__ is str:
+            name = master
+        else:
+            name = master.name
         layers = self._layers
         for layer in layers:
-            if layer.masterLayer and layer.masterId == key:
+            if not layer._name and layer.masterName == name:
                 return layer
-        if not key or key.__class__ is not str:
-            raise ValueError("invalid id %r" % key)
-        layer = Layer(masterId=key, masterLayer=True)
+        layer = Layer(masterName=name)
         layer._parent = self
         layers.append(layer)
         return layer

@@ -21,9 +21,9 @@ def squaredDistance(x1, y1, item):
 
 @attr.s(cmp=False, repr=False, slots=True)
 class Layer:
-    masterId: str = attr.ib()
-    masterLayer: bool = attr.ib(default=False)
+    masterName: str = attr.ib(default="")
     _name: str = attr.ib(default="")
+    location: Optional[Dict[str, int]] = attr.ib(default=None)
 
     width: Union[int, float] = attr.ib(default=600)
     # should default to ascender+descender and only be stored if different from
@@ -38,7 +38,6 @@ class Layer:
 
     color: Optional[Tuple] = attr.ib(default=None)
     _extraData: Optional[Dict] = attr.ib(default=None)
-    _visible: bool = attr.ib(default=False)
 
     _bounds: Optional[Tuple] = attr.ib(default=None, init=False)
     _closedGraphicsPath: Optional[Any] = attr.ib(default=None, init=False)
@@ -47,6 +46,7 @@ class Layer:
     _selectedPaths: Optional[Any] = attr.ib(default=None, init=False)
     _selection: Set = attr.ib(default=attr.Factory(set), init=False)
     _selectionBounds: Optional[Tuple] = attr.ib(default=None, init=False)
+    _visible: bool = attr.ib(default=False, init=False)
 
     def __attrs_post_init__(self):
         for anchor in self._anchors.values():
@@ -211,24 +211,25 @@ class Layer:
 
     @property
     def master(self):
-        parent = self._parent
-        if parent is not None:
-            return parent._parent.masterForId(self.masterId)
+        try:
+            return self._parent._parent._masters[self.masterName]
+        except (AttributeError, KeyError):
+            pass
         return None
+
+    @property
+    def masterLayer(self):
+        return self.masterName and not self._name
 
     @property
     def name(self):
         if self.masterLayer:
-            parent = self._parent
-            if parent is not None:
-                return parent._parent.masterForId(self.masterId).name
+            return self.master.name
         return self._name
 
     @name.setter
     def name(self, value):
-        # master layers bear the name of the master
-        if self._parent is None or not self.masterLayer:
-            self._name = value
+        self._name = value
 
     @property
     def openComponentsGraphicsPath(self):
@@ -370,8 +371,7 @@ class Layer:
             from tfont.converters.tfontConverter import TFontConverter
         conv = TFontConverter(indent=None)
         l = conv.structure(conv.unstructure(self), self.__class__)
-        l.masterLayer = False
-        l.name = datetime.now().strftime("%b %d %y – %H:%M")
+        l._name = datetime.now().strftime("%b %d %y – %H:%M")
         l.visible = False
         return l
 

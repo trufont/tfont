@@ -1,20 +1,13 @@
 import attr
 from tfont.objects.guideline import Guideline
-from tfont.objects.misc import AlignmentZone, uuid4_str
-from tfont.util.tracker import TrackingList
+from tfont.objects.misc import AlignmentZone
+from tfont.util.tracker import MasterGuidelinesList, obj_setattr
 from typing import Any, Dict, List, Optional
-
-
-class MasterGuidelinesList(TrackingList):
-    __slots__ = ()
-
-    _property = "_guidelines"
 
 
 @attr.s(cmp=False, repr=False, slots=True)
 class Master:
-    name: str = attr.ib(default="Regular")
-    id: str = attr.ib(default=attr.Factory(uuid4_str))
+    name: str = attr.ib(default="")
     location: Dict[str, int] = attr.ib(default=attr.Factory(dict))
 
     alignmentZones: List[AlignmentZone] = attr.ib(default=attr.Factory(list))
@@ -31,9 +24,8 @@ class Master:
     hKerning: Dict[str, Dict[str, int]] = attr.ib(default=attr.Factory(dict))
     vKerning: Dict[str, Dict[str, int]] = attr.ib(default=attr.Factory(dict))
 
-    visible: bool = attr.ib(default=False)
-
     _parent: Optional[Any] = attr.ib(default=None, init=False)
+    visible: bool = attr.ib(default=False, init=False)
 
     def __repr__(self):
         more = ""
@@ -48,6 +40,19 @@ class Master:
                     pass
         return "%s(%r%s)" % (self.__class__.__name__, self.name, more)
 
+    def __setattr__(self, key, value):
+        try:
+            font = self._parent
+        except AttributeError:
+            pass
+        else:
+            if font is not None and key == "name":
+                oldValue = getattr(self, key)
+                if value != oldValue:
+                    font.masters[value] = self
+                return
+        obj_setattr(self, key, value)
+
     @property
     def font(self):
         return self._parent
@@ -57,4 +62,4 @@ class Master:
         return MasterGuidelinesList(self)
 
 
-fontMasterList = lambda: [Master()]
+fontMasterDict = lambda: {"Regular": Master(name="Regular")}

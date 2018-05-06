@@ -6,11 +6,13 @@ from tfont.objects.point import Point
 from tfont.util import bezierMath
 from tfont.util.tracker import PathPointsList
 from typing import Any, List, Optional, Tuple
+from uuid import uuid4
 
 
 @attr.s(cmp=False, repr=False, slots=True)
 class Path:
     _points: List[Point] = attr.ib(default=attr.Factory(list))
+    _id: str = attr.ib(default="")
 
     _bounds: Optional[Tuple] = attr.ib(default=None, init=False)
     _graphicsPath: Optional[Any] = attr.ib(default=None, init=False)
@@ -60,6 +62,13 @@ class Path:
         return graphicsPath
 
     @property
+    def id(self):
+        id_ = self._id
+        if not id_:
+            id_ = self._id = str(uuid4())
+        return id_
+
+    @property
     def open(self):
         points = self._points
         return not points or points[0].type == "move"
@@ -78,10 +87,7 @@ class Path:
 
     @property
     def selected(self):
-        for point in self._points:
-            if not point.selected:
-                return False
-        return True
+        return not any(not point.selected for point in self._points)
 
     @selected.setter
     def selected(self, value):

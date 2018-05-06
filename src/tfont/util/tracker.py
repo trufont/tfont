@@ -159,10 +159,9 @@ class FontFeatureClassesDict(TrackingDict):
         font._layoutEngine = None
 
 
-class FontFeatureHeadersDict(TrackingDict):
+class FontFeatureHeadersList(TrackingList):
     __slots__ = ()
 
-    _attr = "description"
     _property = "_featureHeaders"
 
     def applyChange(self):
@@ -170,10 +169,9 @@ class FontFeatureHeadersDict(TrackingDict):
         font._layoutEngine = None
 
 
-class FontGlyphsDict(TrackingDict):
+class FontGlyphsList(TrackingList):
     __slots__ = ()
 
-    _attr = "name"
     _property = "_glyphs"
 
     def applyChange(self):
@@ -183,10 +181,17 @@ class FontGlyphsDict(TrackingDict):
 
 # Note: when adding or deleting a master, do we cycle
 # through all glyphs to add/remove corresponding master layers?
-class FontMastersList(TrackingList):
+class FontMastersDict(TrackingDict):
     __slots__ = ()
 
+    _attr = "name"
     _property = "_masters"
+
+    def applyChange(self):
+        font = self._parent
+        selectedMaster = font._selectedMaster
+        if selectedMaster is not None and selectedMaster not in font._masters:
+            font._selectedMaster = None
 
 
 class FontInstancesList(TrackingList):
@@ -392,6 +397,14 @@ class LayerPathsList(TrackingList):
         value._parent = layer = self._parent
         layer._selectedPaths = None
         self.applyChange()
+
+# Master
+
+
+class MasterGuidelinesList(TrackingList):
+    __slots__ = ()
+
+    _property = "_guidelines"
 
 # Path
 
