@@ -371,7 +371,7 @@ class Layer:
             from tfont.converters.tfontConverter import TFontConverter
         conv = TFontConverter(indent=None)
         l = conv.structure(conv.unstructure(self), self.__class__)
-        l._name = datetime.now().strftime("%b %d %y – %H:%M")
+        l._name = datetime.now().strftime("%b %d %y {} %H:%M").format("–")
         l.visible = False
         return l
 
