@@ -25,7 +25,7 @@ class Guideline(object):
         except AttributeError:
             pass
         else:
-            if hasattr(parent, "masterId") and key[0] != "_":
+            if hasattr(parent, "masterName") and key[0] != "_":
                 oldValue = getattr(self, key)
                 if value != oldValue:
                     obj_setattr(self, key, value)
@@ -38,7 +38,7 @@ class Guideline(object):
                     else:
                         # we don't really care about guidelines in the
                         # selection bounds, tbh
-                        if self.selected and (key == "x" or key == "y"):
+                        if (key == "x" or key == "y") and self.selected:
                             parent._selectionBounds = None
                         glyph = parent._parent
                         glyph._lastModified = time()

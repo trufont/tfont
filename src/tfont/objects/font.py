@@ -34,7 +34,7 @@ class Font:
     versionMajor: int = attr.ib(default=1)
     versionMinor: int = attr.ib(default=0)
 
-    extraData: Dict = attr.ib(default=attr.Factory(dict))
+    _extraData: Optional[Dict] = attr.ib(default=None)
 
     _cmap: Optional[Dict[int, int]] = attr.ib(default=None, init=False)
     _layoutEngine: Optional[Any] = attr.ib(default=None, init=False)
@@ -65,6 +65,13 @@ class Font:
     @property
     def axes(self):
         return FontAxesDict(self)
+
+    @property
+    def extraData(self):
+        extraData = self._extraData
+        if extraData is None:
+            extraData = self._extraData = {}
+        return extraData
 
     @property
     def features(self):
