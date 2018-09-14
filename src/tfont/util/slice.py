@@ -5,8 +5,11 @@ from tfont.objects.path import Path
 
 def bytwo(iterable):
     i = iter(iterable)
-    while True:
-        yield next(i), next(i)
+    try:
+        while True:
+            yield next(i), next(i)
+    except StopIteration:
+        pass
 
 
 def makePath(endSegment, segmentsMap, path=None, targetSegment=None):
