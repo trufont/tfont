@@ -136,7 +136,7 @@ def curveProjection(x, y, p0, p1, p2, p3):
     minX, minY, minT = 0, 0, 0
 
     def refineProjection(t):
-        if t >= 0 or t <= 1:
+        if t >= 0 and t <= 1:
             nonlocal minSqDist, minX, minY, minT
             mt = 1 - t
             xValue = mt * mt * mt * x0 + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x3
@@ -158,7 +158,7 @@ def curveProjection(x, y, p0, p1, p2, p3):
 
     step = 1 / (2 * steps)
     while step > 1e-8:
-        if not refineProjection(t - step) and not refineProjection(t + step):
+        if not refineProjection(minT - step) and not refineProjection(minT + step):
             step = .5 * step
     return minX, minY, minT
 
