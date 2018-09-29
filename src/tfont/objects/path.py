@@ -322,8 +322,22 @@ class Segment:
     def type(self):
         return self._points[self._end].type
 
+    def intersectLine(self, x1, y1, x2, y2):
+        points = self.points
+        pts_len = len(points)
+        if pts_len == 2:
+            # line
+            ret = bezierMath.lineIntersection(x1, y1, x2, y2, *points)
+            if ret is not None:
+                return [ret]
+        elif pts_len == 4:
+            # curve
+            return bezierMath.curveIntersections(x1, y1, x2, y2, *points)
+        # move, quads
+        return []
+
     # ! this will invalidate the segments
-    def addOffCurves(self):
+    def intoCurve(self):
         points = self._points
         index = self._end
         onCurve = points[index]
@@ -340,23 +354,15 @@ class Segment:
                     start.y + .35 * (onCurve.y - start.y),
                 ))
             onCurve.type = "curve"
-        else:
-            raise NotImplementedError(
-                "cannot add offCurves to %r segment" % onCurve.type)
 
-    def intersectLine(self, x1, y1, x2, y2):
-        points = self.points
-        pts_len = len(points)
-        if pts_len == 2:
-            # line
-            ret = bezierMath.lineIntersection(x1, y1, x2, y2, *points)
-            if ret is not None:
-                return [ret]
-        elif pts_len == 4:
-            # curve
-            return bezierMath.curveIntersections(x1, y1, x2, y2, *points)
-        # move, quads
-        return []
+    # ! this will invalidate the segments
+    def intoLine(self):
+        points = self._points
+        end = self._end
+        if points[end].type == "curve":
+            start = self._start
+            del points[start:end]
+            points[start].type = "line"
 
     def projectPoint(self, x, y):
         points = self.points
@@ -368,12 +374,3 @@ class Segment:
             # curve
             return bezierMath.curveProjection(x, y, *points)
         return None
-
-    # ! this will invalidate the segments
-    def removeOffCurves(self):
-        points = self._points
-        end = self._end
-        if points[end].type == "curve":
-            start = self._start
-            del points[start:end]
-            points[start].type = "line"
