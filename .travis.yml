@@ -1,0 +1,31 @@
+language: python
+sudo: false
+
+env:
+  global:
+  - TWINE_USERNAME="anthrotype"
+  - secure: gxYMHcO3weNoJzYn8+xb/J1zd3y9iXNzug1FLo9nPnOOl0vPeFVaqkyz+PGulMLEivJtv5yc9ypJbmjHNKZkvUgpiBl97Aw2EjxAMjfyV8Ra1t1MZI5fYYQBlk/fk5dycxG5N0251jJ9VAUDJSMGZQNETKzfOHIiUYqvurUcuYpvDe7/OM7C4ynoiQSVV0Dti/K9YHlasv725O4vuc/po2l1fOdxo0YwizcawTkRJElAlFN3RRdGn8fYIG45c0iCZk5yI9sYbyoA2NvESEbKYDh77WwJwgobY/bsJu/AAYC7xdNBTlDc1mvqoMLZOv5U+pEsakvNOiB8kYyBmQIsB+/VUqXPDo+pFCxWACD0XP3/0obfVQDKiA4WGBE7apCKRSmUmL94qvolXErxKvPrIZrmzmB2xUOAo1PZc9l7P3JZpkV76StpBDlFJJ/wDE1Rz8xHiB2GbqN6q+aA0hVqU3S/AXAtc4YbeyA9b8Tb9jq+oTZaV16hBi3gkzUdYXcC0rl0aBnGNgC8DIHdRBKvuPQACwxLTOhwocdqeBY0tMlxYT/o2+GaOmCgEsBZ4jCbelN/82JbsvdnYXZIfLfMiAAAWfQelP1/+Bhin1wxPMOasw21rzOkOGb7UCvGEPoSWzcfhZsw1+f3NZkaXNfoqn8hj7sSV7+c61/j80QULhg=
+
+matrix:
+  include:
+  - env: TOXENV=py36
+    python: 3.6
+  - env: TOXENV=py37
+    python: 3.7
+    dist: xenial
+    sudo: true
+
+install:
+  - pip install tox
+
+script: tox
+
+after_success:
+  # If it's a tagged commit, upload sdist and wheel packages to PyPI.
+  - |
+    if [ -n "$TRAVIS_TAG" ] && [ "$TRAVIS_REPO_SLUG" == "trufont/tfont" ] && [ "$TRAVIS_PYTHON_VERSION" == "3.7" ]; then
+        pip install --upgrade setuptools wheel twine
+        python setup.py sdist --formats=zip
+        python setup.py bdist_wheel
+        twine upload dist/*.whl dist/*.zip
+    fi
