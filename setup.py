@@ -20,8 +20,16 @@ setup(
         "fonttools>=3.24.0",
         "python-rapidjson>=0.5.0",
         "attrs>=17.3.0",
-        "cattrs>=0.8.0"
+        "cattrs>=0.8.0",
+        "ufoLib2>=0.1.3",
     ],
+    extras_require={
+        "testing": [
+            "pytest",
+            "pytest-cov",
+            "pytest-randomly",
+        ],
+    },
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Operating System :: OS Independent",
