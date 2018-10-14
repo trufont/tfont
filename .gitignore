@@ -6,3 +6,5 @@ __pycache__/
 .eggs/
 .cache/
 .tox/
+.coverage
+htmlcov/
