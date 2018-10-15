@@ -77,7 +77,12 @@ class UFOConverter(cattr.Converter):
         # note: unlike ufo, we store kerning in visual order. hard to convert
         # between the two (given that ltr and rtl pairs can be mixed)
         if ufo.kerning:
-            master.hKerning = ufo.kerning
+            hKerning = {}
+            for (first, second), value in ufo.kerning.items():
+                if first not in hKerning:
+                    hKerning[first] = {}
+                hKerning[first][second] = value
+            master.hKerning = hKerning
         if info.ascender:
             master.ascender = info.ascender
         if info.capHeight:
