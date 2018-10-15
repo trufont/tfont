@@ -35,6 +35,7 @@ setup(
     setup_requires=[
         "setuptools_scm",
     ],
+    python_requires=">=3.6",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Operating System :: OS Independent",
