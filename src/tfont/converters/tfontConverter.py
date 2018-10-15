@@ -198,7 +198,7 @@ class TFontConverter(cattr.Converter):
             if override:
                 t = a.type
                 try:
-                    if t.__origin__ is Dict and t.__args__[0] is str:
+                    if issubclass(t.__origin__, dict) and t.__args__[0] is str:
                         type_ = t
                 except (AttributeError, TypeError):
                     pass
