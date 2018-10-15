@@ -7,7 +7,7 @@ with open('README.rst', 'r', encoding="utf-8") as f:
 
 setup(
     name="tfont",
-    version="0.1.0.dev0",
+    use_scm_version={"write_to": "src/tfont/_version.py"},
     description="tfont is a font library that writes to JSON.",
     long_description=long_description,
     author="Adrien Tétar",
@@ -32,6 +32,9 @@ setup(
             "pytest-randomly",
         ],
     },
+    setup_requires=[
+        "setuptools_scm",
+    ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Operating System :: OS Independent",
