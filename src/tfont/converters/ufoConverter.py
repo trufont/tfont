@@ -12,13 +12,20 @@ from typing import Union
 try:
     import ufoLib2
 except ImportError:
-    pass
+    ufoLib2 = None
 
 
 class UFOConverter(cattr.Converter):
     __slots__ = ()
 
     def __init__(self, **kwargs):
+        if ufoLib2 is None:
+            raise ImportError(
+                "No module named 'ufoLib2'. This is required to use the "
+                "UFOConverter. Please re-install tfont with 'ufo' extra:\n"
+                "    $ pip install tfont[ufo]",
+            )
+
         super().__init__(**kwargs)
         self.register_structure_hook(Union[int, float], lambda d, _: d)
 
