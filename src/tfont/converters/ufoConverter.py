@@ -9,7 +9,10 @@ from tfont.objects.guideline import Guideline
 from tfont.objects.misc import AlignmentZone, Transformation
 from tfont.objects.path import Path
 from typing import Union
-import ufoLib2
+try:
+    import ufoLib2
+except ImportError:
+    pass
 
 
 class UFOConverter(cattr.Converter):
