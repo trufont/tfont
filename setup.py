@@ -21,9 +21,11 @@ setup(
         "python-rapidjson>=0.5.0",
         "attrs>=17.3.0",
         "cattrs>=0.8.0",
-        "ufoLib2>=0.1.3",
     ],
     extras_require={
+        "ufo": [
+            "ufoLib2>=0.1.3",
+        ],
         "testing": [
             "pytest",
             "pytest-cov",
