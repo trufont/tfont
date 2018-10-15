@@ -10,7 +10,7 @@ setup(
     use_scm_version={"write_to": "src/tfont/_version.py"},
     description="tfont is a font library that writes to JSON.",
     long_description=long_description,
-    long_description_content_type="text/markdown"
+    long_description_content_type="text/markdown",
     author="Adrien Tétar",
     author_email="adri-from-59@hotmail.fr",
     url="https://github.com/trufont/tfont",
