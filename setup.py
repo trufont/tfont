@@ -25,7 +25,7 @@ setup(
     ],
     extras_require={
         "ufo": [
-            "ufoLib2>=0.1.3",
+            "ufoLib2>=0.2.1",
         ],
         "testing": [
             "pytest",

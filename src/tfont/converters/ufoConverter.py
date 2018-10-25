@@ -32,7 +32,7 @@ class UFOConverter(cattr.Converter):
     def open(self, path, font=None):
         if font is None:
             font = Font()
-        ufo = ufoLib2.Font(path)
+        ufo = ufoLib2.Font.open(path)
         # font
         info = ufo.info
         if info.openTypeHeadCreated:
