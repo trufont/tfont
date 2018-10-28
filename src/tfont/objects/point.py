@@ -27,29 +27,31 @@ class Point:
         return "%s(%r, %r%s)" % (
             self.__class__.__name__, self.x, self.y, more)
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key, value): # add some custom behavior
         try:
-            path = self._parent
+            path = self._parent # can this happen?
         except AttributeError:
             pass
         else:
-            if path is not None and key[0] != "_":
+            if path is not None and key[0] != "_": # not a private attribute
                 oldValue = getattr(self, key)
                 if value != oldValue:
                     obj_setattr(self, key, value)
                     layer = path._parent
-                    if key == "selected":
+                    if key == "selected": # tell the parent layer about our change of selected-ness
                         if value:
                             layer._selection.add(self)
                         else:
                             layer._selection.remove(self)
+                        # (*) reset selection paths and bounds so that it will be recomputed
                         layer._selectedPaths = layer._selectionBounds = None
                     else:
                         glyph = layer._parent
                         if key == "x" or key == "y":
                             if self.selected:
                                 layer._selectedPaths = \
-                                    layer._selectionBounds = None
+                                    layer._selectionBounds = None # see (*) above
+                            # reset several cached data, in order to trigger re-computation
                             path._bounds = path._graphicsPath = \
                                 layer._bounds = \
                                 layer._closedGraphicsPath = \

@@ -418,3 +418,19 @@ class Layer:
             changed |= path.transform(
                 transformation, selectionOnly=selectionOnly)
         return changed
+
+    # Start of Samuel additions
+
+    def snapshot(self):
+        from tfont.converters.tfontConverter import TFontConverter as TFC
+        tfc = TFC(indent=None) # indent=None means: "Do not dump JSON, but just plain Dict"
+        snap = tfc.unstructure(self._paths)
+        return (lambda: self.setToSnapshop(snap))
+
+    def setToSnapshop(self, snap):
+        from tfont.converters.tfontConverter import TFontConverter as TFC
+        tfc = TFC()
+        self.paths[:] = tfc.structure(snap, List[Path])
+        self.paths.applyChange()
+
+    # End of Samuel additions

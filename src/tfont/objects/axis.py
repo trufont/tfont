@@ -28,5 +28,6 @@ class Axis:
                 oldValue = getattr(self, key)
                 if value != oldValue:
                     font.axes[value] = self
+                    # we don't delete |oldValue| from |font.axes|?
                 return
         obj_setattr(self, key, value)
