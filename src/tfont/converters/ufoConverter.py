@@ -63,7 +63,7 @@ class UFOConverter(cattr.Converter):
             font._extraData = ufo.lib
         # features
         if ufo.features:
-            font.featureHeaders.append(FeatureHeader("fea", ufo.features))
+            font.featureHeaders.append(FeatureHeader("fea", ufo.features.text))
         # master
         master = font.selectedMaster
         if info.styleName:
@@ -146,7 +146,7 @@ class UFOConverter(cattr.Converter):
             # paths
             paths = layer.paths
             for c in self.unstructure(g.contours):
-                pts = c.pop("_points")
+                pts = c.pop("points")
                 for p in pts:
                     name = p.pop("name", None)
                     ident = p.pop("identifier", None)
