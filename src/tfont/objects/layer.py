@@ -12,7 +12,6 @@ from tfont.util.tracker import (
 from time import time
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
-
 def squaredDistance(x1, y1, item):
     x2, y2 = item
     dx, dy = x2 - x1, y2 - y1
@@ -47,6 +46,9 @@ class Layer:
     _selection: Set = attr.ib(default=attr.Factory(set), init=False)
     _selectionBounds: Optional[Tuple] = attr.ib(default=None, init=False)
     _visible: bool = attr.ib(default=False, init=False)
+
+    # For undo/redo
+    _undo: Optional[Any] = attr.ib(default=None, init=False)
 
     def __attrs_post_init__(self):
         for anchor in self._anchors.values():
@@ -421,16 +423,57 @@ class Layer:
 
     # Start of Samuel additions
 
-    def snapshot(self):
+    def snapshot(self, paths=False, anchors=False, components=False, guidelines=False):
+        """serializes (parts) of the layer in order the restore the layer to that state later on.
+        Returns a lambda that performs this state restoration."""
         from tfont.converters.tfontConverter import TFontConverter as TFC
         tfc = TFC(indent=None) # indent=None means: "Do not dump JSON, but just plain Dict"
-        snap = tfc.unstructure(self._paths)
-        return (lambda: self.setToSnapshop(snap))
+        snaps = []
+        if paths:
+            snaps.append(('paths', tfc.unstructure(self._paths)))
+        if anchors:
+            snaps.append(('anchors', tfc.unstructure(self._anchors)))
+        if guidelines:
+            snaps.append(('guidelines', tfc.unstructure(self._guidelines)))
+        if components:
+            snaps.append(('components', tfc.unstructure(self._components)))
+        return snaps
 
-    def setToSnapshop(self, snap):
+    def setToSnapshop(self, snaps):
         from tfont.converters.tfontConverter import TFontConverter as TFC
         tfc = TFC()
-        self.paths[:] = tfc.structure(snap, List[Path])
-        self.paths.applyChange()
+        for snap in snaps:
+            name, unstructured = snap
+            if name == 'paths':
+                self.paths[:] = tfc.structure(unstructured, List[Path])
+                self.paths.applyChange()
+            elif name == 'anchors':
+                a = self.anchors
+                a.clear()
+                a.update(tfc.structure(unstructured, Dict[str, Anchor]))
+                a.applyChange()
+            elif name == 'guidelines':
+                self.guidelines[:] = tfc.structure(unstructured, List[Guideline])
+                self.guidelines.applyChange()
+            elif name == 'components':
+                self.components[:] = tfc.structure(unstructured, List[Guideline])
+                self.components.applyChange()
+
+    def beginUndoGroup(self, paths=False, anchors=False, components=False, guidelines=False):
+        #FIXME: if self._undo is not None, then log it / throw an exception
+        self._undo = self.snapshot(paths, anchors)
+
+    def endUndoGroup(self):
+        names = [name for (name, snap) in self._undo]
+        paths = 'paths' in names
+        anchors = 'anchors' in names
+        guidelines = 'guidelines' in names
+        components = 'components' in names
+        redoSnaps = self.snapshot(paths, anchors)
+        redoAction = lambda: self.setToSnapshop(redoSnaps)
+        undoSnaps = self._undo # we can't put "self._undo" in the lambda below since it is set to None just after
+        undoAction = lambda: self.setToSnapshop(undoSnaps)
+        self._undo = None
+        return undoAction, redoAction
 
     # End of Samuel additions
