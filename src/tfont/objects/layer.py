@@ -459,7 +459,7 @@ class Layer:
                 self.components[:] = tfc.structure(unstructured, List[Guideline])
                 self.components.applyChange()
 
-    def beginUndoGroup(self, paths=False, anchors=False, components=False, guidelines=False):
+    def beginUndoGroup(self, paths=True, anchors=True, components=True, guidelines=True):
         #FIXME: if self._undo is not None, then log it / throw an exception
         self._undo = self.snapshot(paths, anchors)
 
