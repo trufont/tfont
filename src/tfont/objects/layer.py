@@ -431,12 +431,18 @@ class Layer:
         snaps = []
         if paths:
             snaps.append(('paths', tfc.unstructure(self._paths)))
+            # if self._selectedPaths:
+            #     snaps.append(('selected', tfc.unstructure(self._selectedPaths)))
         if anchors:
             snaps.append(('anchors', tfc.unstructure(self._anchors)))
         if guidelines:
             snaps.append(('guidelines', tfc.unstructure(self._guidelines)))
         if components:
             snaps.append(('components', tfc.unstructure(self._components)))
+
+        # always keep selections
+        if self._selection:
+            snaps.append(('selection', tfc.unstructure(self._selection)))
         return snaps
 
     def setToSnapshop(self, snaps):
@@ -447,9 +453,11 @@ class Layer:
             if name == 'paths':
                 self.paths[:] = tfc.structure(unstructured, List[Path])
                 self.paths.applyChange()
+            # elif name == 'selected':
+            #     self._selectedPaths = tfc.structure(unstructured, Any)
             elif name == 'anchors':
                 a = self.anchors
-                a.clear()
+                # -- a.clear()
                 a.update(tfc.structure(unstructured, Dict[str, Anchor]))
                 a.applyChange()
             elif name == 'guidelines':
@@ -458,6 +466,8 @@ class Layer:
             elif name == 'components':
                 self.components[:] = tfc.structure(unstructured, List[Guideline])
                 self.components.applyChange()
+            elif name == 'selection':
+                self.selection = tfc.structure(unstructured, Set)
 
     def beginUndoGroup(self, paths=True, anchors=True, components=True, guidelines=True):
         #FIXME: if self._undo is not None, then log it / throw an exception
@@ -469,7 +479,7 @@ class Layer:
         anchors = 'anchors' in names
         guidelines = 'guidelines' in names
         components = 'components' in names
-        redoSnaps = self.snapshot(paths, anchors)
+        redoSnaps = self.snapshot(paths, anchors, components, 'guidelines' in names)
         redoAction = lambda: self.setToSnapshop(redoSnaps)
         undoSnaps = self._undo # we can't put "self._undo" in the lambda below since it is set to None just after
         undoAction = lambda: self.setToSnapshop(undoSnaps)
