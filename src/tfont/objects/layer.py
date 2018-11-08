@@ -431,7 +431,9 @@ class Layer:
         snaps = []
         if paths:
             snaps.append(('paths', tfc.unstructure(self._paths)))
+            # import logging 
             # if self._selectedPaths:
+            #     logging.info("LAYER: snapshot _selectedPaths is '{}'".format(self._selectedPaths))
             #     snaps.append(('selected', tfc.unstructure(self._selectedPaths)))
         if anchors:
             snaps.append(('anchors', tfc.unstructure(self._anchors)))
@@ -443,6 +445,8 @@ class Layer:
         # always keep selections
         if self._selection:
             snaps.append(('selection', tfc.unstructure(self._selection)))
+        if self._selectionBounds:
+            snaps.append(('selectionB', tfc.unstructure(self._selectionBounds)))
         return snaps
 
     def setToSnapshop(self, snaps):
@@ -454,7 +458,7 @@ class Layer:
                 self.paths[:] = tfc.structure(unstructured, List[Path])
                 self.paths.applyChange()
             # elif name == 'selected':
-            #     self._selectedPaths = tfc.structure(unstructured, Any)
+            #     self._selectedPaths = tfc.structure(unstructured, List[Path])
             elif name == 'anchors':
                 a = self.anchors
                 # -- a.clear()
@@ -468,6 +472,8 @@ class Layer:
                 self.components.applyChange()
             elif name == 'selection':
                 self.selection = tfc.structure(unstructured, Set)
+            elif name == 'selectionB':
+                self._selectionBounds = tfc.structure(unstructured, Tuple)
 
     def beginUndoGroup(self, paths=True, anchors=True, components=True, guidelines=True):
         #FIXME: if self._undo is not None, then log it / throw an exception
