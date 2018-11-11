@@ -421,8 +421,6 @@ class Layer:
                 transformation, selectionOnly=selectionOnly)
         return changed
 
-    # Start of Samuel additions
-
     def snapshot(self, paths=False, anchors=False, components=False, guidelines=False):
         """serializes (parts) of the layer in order the restore the layer to that state later on.
         Returns a lambda that performs this state restoration."""
@@ -443,10 +441,10 @@ class Layer:
             snaps.append(('components', tfc.unstructure(self._components)))
 
         # always keep selections
-        if self._selection:
-            snaps.append(('selection', tfc.unstructure(self._selection)))
-        if self._selectionBounds:
-            snaps.append(('selectionB', tfc.unstructure(self._selectionBounds)))
+        #if self._selection:
+        #    snaps.append(('selection', tfc.unstructure(self._selection)))
+        #if self._selectionBounds:
+        #    snaps.append(('selectionB', tfc.unstructure(self._selectionBounds)))
         return snaps
 
     def setToSnapshop(self, snaps):
@@ -461,7 +459,7 @@ class Layer:
             #     self._selectedPaths = tfc.structure(unstructured, List[Path])
             elif name == 'anchors':
                 a = self.anchors
-                # -- a.clear()
+                a.clear()
                 a.update(tfc.structure(unstructured, Dict[str, Anchor]))
                 a.applyChange()
             elif name == 'guidelines':
@@ -470,26 +468,25 @@ class Layer:
             elif name == 'components':
                 self.components[:] = tfc.structure(unstructured, List[Guideline])
                 self.components.applyChange()
-            elif name == 'selection':
-                self.selection = tfc.structure(unstructured, Set)
-            elif name == 'selectionB':
-                self._selectionBounds = tfc.structure(unstructured, Tuple)
+            #elif name == 'selection':
+            #    self.selection = tfc.structure(unstructured, Set)
+            #elif name == 'selectionB':
+            #    self._selectionBounds = tfc.structure(unstructured, Tuple)
 
     def beginUndoGroup(self, paths=True, anchors=True, components=True, guidelines=True):
         #FIXME: if self._undo is not None, then log it / throw an exception
         self._undo = self.snapshot(paths, anchors, components, guidelines)
 
     def endUndoGroup(self):
+        if self._undo is None: return
         names = [name for (name, snap) in self._undo]
         paths = 'paths' in names
         anchors = 'anchors' in names
         guidelines = 'guidelines' in names
         components = 'components' in names
-        redoSnaps = self.snapshot(paths, anchors, components, 'guidelines' in names)
+        redoSnaps = self.snapshot(paths, anchors, components, guidelines)
         redoAction = lambda: self.setToSnapshop(redoSnaps)
         undoSnaps = self._undo # we can't put "self._undo" in the lambda below since it is set to None just after
         undoAction = lambda: self.setToSnapshop(undoSnaps)
         self._undo = None
         return undoAction, redoAction
-
-    # End of Samuel additions
