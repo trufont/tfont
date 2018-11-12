@@ -75,12 +75,13 @@ class UFOConverter(cattr.Converter):
             master.hStems = info.postscriptStemSnapH
         if info.postscriptStemSnapV:
             master.vStems = info.postscriptStemSnapV
-        for g in ufo.guidelines:
-            guideline = Guideline(
-                x=g.x or 0, y=g.y or 0, angle=g.angle or 0, name=g.name or ""
-            )
-            # ufo guideline color and identifier are skipped
-            master.guidelines.append(guideline)
+        if ufo.guidelines:
+            for g in ufo.guidelines:
+                guideline = Guideline(
+                    x=g.x or 0, y=g.y or 0, angle=g.angle or 0, name=g.name or ""
+                )
+                # ufo guideline color and identifier are skipped
+                master.guidelines.append(guideline)
         # note: unlike ufo, we store kerning in visual order. hard to convert
         # between the two (given that ltr and rtl pairs can be mixed)
         if ufo.kerning:
