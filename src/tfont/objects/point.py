@@ -15,7 +15,7 @@ class Point:
     _extraData: Optional[Dict] = attr.ib(default=None)
 
     _parent: Optional[Any] = attr.ib(default=None, init=False)
-    selected: bool = attr.ib(default=False, init=False)
+    selected: bool = attr.ib(default=False, init=True)
 
     def __repr__(self):
         if self.type is not None:

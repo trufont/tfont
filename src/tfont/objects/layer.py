@@ -429,9 +429,9 @@ class Layer:
         snaps = []
         if paths:
             snaps.append(('paths', tfc.unstructure(self._paths)))
-            # import logging 
-            # if self._selectedPaths:
-            #     logging.info("LAYER: snapshot _selectedPaths is '{}'".format(self._selectedPaths))
+            import logging 
+            if self._selectedPaths:
+                logging.info("LAYER: snapshot _selectedPaths is '{}'".format(self._selectedPaths))
             #     snaps.append(('selected', tfc.unstructure(self._selectedPaths)))
         if anchors:
             snaps.append(('anchors', tfc.unstructure(self._anchors)))

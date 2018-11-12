@@ -11,7 +11,7 @@ class Anchor:
     name: str = attr.ib(default="")
 
     _parent: Optional[object] = attr.ib(default=None, init=False)
-    selected: bool = attr.ib(default=False, init=False)
+    selected: bool = attr.ib(default=False, init=True)
 
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
