@@ -429,22 +429,17 @@ class Layer:
         snaps = []
         if paths:
             snaps.append(('paths', tfc.unstructure(self._paths)))
-            import logging 
-            if self._selectedPaths:
-                logging.info("LAYER: snapshot _selectedPaths is '{}'".format(self._selectedPaths))
-            #     snaps.append(('selected', tfc.unstructure(self._selectedPaths)))
         if anchors:
-            snaps.append(('anchors', tfc.unstructure(self._anchors)))
+            # unstructure Anchors as List of values,
+            # which contains the name of anchor -- using as key 
+            # see clipboard util/clipboard.py
+            # -------------------------------
+            snaps.append(('anchors', tfc.unstructure([value for value in self._anchors.values()])))
         if guidelines:
             snaps.append(('guidelines', tfc.unstructure(self._guidelines)))
         if components:
             snaps.append(('components', tfc.unstructure(self._components)))
 
-        # always keep selections
-        #if self._selection:
-        #    snaps.append(('selection', tfc.unstructure(self._selection)))
-        #if self._selectionBounds:
-        #    snaps.append(('selectionB', tfc.unstructure(self._selectionBounds)))
         return snaps
 
     def setToSnapshop(self, snaps):
@@ -455,12 +450,10 @@ class Layer:
             if name == 'paths':
                 self.paths[:] = tfc.structure(unstructured, List[Path])
                 self.paths.applyChange()
-            # elif name == 'selected':
-            #     self._selectedPaths = tfc.structure(unstructured, List[Path])
             elif name == 'anchors':
                 a = self.anchors
                 a.clear()
-                a.update(tfc.structure(unstructured, Dict[str, Anchor]))
+                a.update({value.name:value for value in tfc.structure(unstructured, List[Anchor])})
                 a.applyChange()
             elif name == 'guidelines':
                 self.guidelines[:] = tfc.structure(unstructured, List[Guideline])
@@ -468,10 +461,6 @@ class Layer:
             elif name == 'components':
                 self.components[:] = tfc.structure(unstructured, List[Guideline])
                 self.components.applyChange()
-            #elif name == 'selection':
-            #    self.selection = tfc.structure(unstructured, Set)
-            #elif name == 'selectionB':
-            #    self._selectionBounds = tfc.structure(unstructured, Tuple)
 
     def beginUndoGroup(self, paths=True, anchors=True, components=True, guidelines=True):
         #FIXME: if self._undo is not None, then log it / throw an exception
