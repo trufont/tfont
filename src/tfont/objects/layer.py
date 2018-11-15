@@ -12,11 +12,13 @@ from tfont.util.tracker import (
 from time import time
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
+import logging
+
+
 def squaredDistance(x1, y1, item):
     x2, y2 = item
     dx, dy = x2 - x1, y2 - y1
     return dx*dx + dy*dy
-
 
 @attr.s(cmp=False, repr=False, slots=True)
 class Layer:
@@ -48,7 +50,7 @@ class Layer:
     _visible: bool = attr.ib(default=False, init=False)
 
     # For undo/redo
-    _undo: Optional[Any] = attr.ib(default=None, init=False)
+    _undo: Optional[Dict] = attr.ib(default=None, init=False)
 
     def __attrs_post_init__(self):
         for anchor in self._anchors.values():
@@ -431,7 +433,7 @@ class Layer:
             snaps.append(('paths', tfc.unstructure(self._paths)))
         if anchors:
             # unstructure Anchors as List of values,
-            # which contains the name of anchor -- using as key 
+            # one of these values is the name of anchor -- using as key 
             # see clipboard util/clipboard.py
             # -------------------------------
             snaps.append(('anchors', tfc.unstructure([value for value in self._anchors.values()])))
@@ -449,33 +451,52 @@ class Layer:
             name, unstructured = snap
             if name == 'paths':
                 self.paths[:] = tfc.structure(unstructured, List[Path])
+                # for path in self.paths:
+                #     path.selected = True
                 self.paths.applyChange()
             elif name == 'anchors':
                 a = self.anchors
                 a.clear()
                 a.update({value.name:value for value in tfc.structure(unstructured, List[Anchor])})
+                # for value in self.anchors.values:
+                #     value.selected = True
                 a.applyChange()
             elif name == 'guidelines':
                 self.guidelines[:] = tfc.structure(unstructured, List[Guideline])
+                # for guideline in self.guidelines:
+                #     guideline.selected = True
                 self.guidelines.applyChange()
             elif name == 'components':
                 self.components[:] = tfc.structure(unstructured, List[Guideline])
+                # for comp in self.components:
+                #     comp.selected = True
                 self.components.applyChange()
 
-    def beginUndoGroup(self, paths=True, anchors=True, components=True, guidelines=True):
+    def beginUndoGroup(self, group_name: str, paths=True, anchors=True, components=True, guidelines=True):
         #FIXME: if self._undo is not None, then log it / throw an exception
-        self._undo = self.snapshot(paths, anchors, components, guidelines)
+        if not self._undo:
+            self._undo = {}
+        if group_name not in self._undo:
+            self._undo[group_name] = self.snapshot(paths, anchors, components, guidelines)
 
-    def endUndoGroup(self):
-        if self._undo is None: return
-        names = [name for (name, snap) in self._undo]
+
+    def endUndoGroup(self, group_name: str):
+        if self._undo is None or group_name not in self._undo: 
+            raise KeyError("LAYER: endUndoGroup -> Key error {} does not exist".format(group_name))
+
+        # get all saved parts (as name)
+        names = [name for (name, snap) in self._undo[group_name]]
         paths = 'paths' in names
         anchors = 'anchors' in names
         guidelines = 'guidelines' in names
         components = 'components' in names
+
         redoSnaps = self.snapshot(paths, anchors, components, guidelines)
         redoAction = lambda: self.setToSnapshop(redoSnaps)
-        undoSnaps = self._undo # we can't put "self._undo" in the lambda below since it is set to None just after
+        undoSnaps = self._undo[group_name] # we can't put "self._undo" in the lambda below since it is set to None just after
         undoAction = lambda: self.setToSnapshop(undoSnaps)
-        self._undo = None
+        
+        # end of save for this key 
+        del self._undo[group_name]
+
         return undoAction, redoAction
