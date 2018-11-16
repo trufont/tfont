@@ -455,12 +455,11 @@ class Layer:
                 #     path.selected = True
                 self.paths.applyChange()
             elif name == 'anchors':
-                a = self.anchors
-                a.clear()
-                a.update({value.name:value for value in tfc.structure(unstructured, List[Anchor])})
+                self.anchors.clear()
+                self.anchors.update({value.name:value for value in tfc.structure(unstructured, List[Anchor])})
                 # for value in self.anchors.values:
                 #     value.selected = True
-                a.applyChange()
+                self.anchors.applyChange()
             elif name == 'guidelines':
                 self.guidelines[:] = tfc.structure(unstructured, List[Guideline])
                 # for guideline in self.guidelines:
