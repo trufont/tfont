@@ -498,4 +498,4 @@ class Layer:
         # end of save for this key 
         del self._undo[group_name]
 
-        return undoAction, redoAction
+        return undoAction, redoAction, (undoSnaps, redoSnaps)
