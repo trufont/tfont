@@ -1,6 +1,7 @@
 import attr
 from datetime import datetime
 from functools import partial
+from tfont.objects.point import Point
 from tfont.objects.anchor import Anchor
 from tfont.objects.component import Component
 from tfont.objects.guideline import Guideline
@@ -446,13 +447,13 @@ class Layer:
 
     def setToSnapshop(self, snaps):
         from tfont.converters.tfontConverter import TFontConverter as TFC
-        tfc = TFC()
+        tfc = TFC(indent=None)
         for snap in snaps:
             name, unstructured = snap
             if name == 'paths':
+                self.paths[:] = [] # this removes the deleted points from the layer.selection
+                # The line below will also add the new point to the layer.selection
                 self.paths[:] = tfc.structure(unstructured, List[Path])
-                # for path in self.paths:
-                #     path.selected = True
                 self.paths.applyChange()
             elif name == 'anchors':
                 self.anchors.clear()

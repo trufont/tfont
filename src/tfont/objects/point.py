@@ -11,11 +11,11 @@ class Point:
     y: Union[int, float] = attr.ib()
     type: Optional[str] = attr.ib(default=None)
     smooth: bool = attr.ib(default=False)
+    selected: bool = attr.ib(default=False)
 
     _extraData: Optional[Dict] = attr.ib(default=None)
 
     _parent: Optional[Any] = attr.ib(default=None, init=False)
-    selected: bool = attr.ib(default=False, init=False)
 
     def __repr__(self):
         if self.type is not None:

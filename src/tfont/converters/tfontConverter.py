@@ -100,10 +100,10 @@ class TFontConverter(cattr.Converter):
         self.register_structure_hook(AlignmentZone, structure_seq)
         self.register_unstructure_hook(AlignmentZone, unstructure_seq)
         # Path
-        self.register_structure_hook(Path, _structure_Path)
         if indent is None:
-            self.register_unstructure_hook(Path, _unstructure_Path_base)
+            pass#self.register_unstructure_hook(Path, _unstructure_Path_base)
         else:
+            self.register_structure_hook(Path, _structure_Path)
             self.register_unstructure_hook(Path, _unstructure_Path)
         # Transformation
         self.register_structure_hook(Transformation, structure_seq)
