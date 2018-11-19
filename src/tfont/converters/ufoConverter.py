@@ -107,7 +107,7 @@ class UFOConverter(cattr.Converter):
         # glyphs
         font._glyphs.clear()
         glyphs = font.glyphs
-        for glyph_name in ufo.glyphOrder:
+        for glyph_name in ufo_glyph_order(ufo):
             glyph = Glyph(glyph_name)
             glyphs.append(glyph)
             # TODO assign kerning groups
@@ -214,3 +214,18 @@ class UFOConverter(cattr.Converter):
             conv_obj[name] = dispatch(type_)(val, type_)
 
         return cl(**conv_obj)
+
+
+def ufo_glyph_order(ufo_font):
+    glyph_order = ufo_font.glyphOrder
+    if glyph_order:
+        glyph_order_set = set(glyph_order)
+        ufo_glyph_names = {glyph.name for glyph in ufo_font}
+        if ufo_glyph_names.issubset(glyph_order_set):
+            return glyph_order
+        else:
+            glyph_order_missing = ufo_glyph_names - glyph_order_set
+            glyph_order.extend(glyph_order_missing)
+            return glyph_order
+    else:
+        return [glyph.name for glyph in ufo_font]
