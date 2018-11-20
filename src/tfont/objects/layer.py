@@ -23,6 +23,7 @@ def squaredDistance(x1, y1, item):
 
 @attr.s(cmp=False, repr=False, slots=True)
 class Layer:
+    a = 10
     masterName: str = attr.ib(default="")
     _name: str = attr.ib(default="")
     location: Optional[Dict[str, int]] = attr.ib(default=None)
@@ -445,7 +446,7 @@ class Layer:
 
         return snaps
 
-    def setToSnapshop(self, snaps):
+    def setToSnapshot(self, snaps):
         from tfont.converters.tfontConverter import TFontConverter as TFC
         tfc = TFC(indent=None)
         for snap in snaps:
@@ -492,9 +493,9 @@ class Layer:
         components = 'components' in names
 
         redoSnaps = self.snapshot(paths, anchors, components, guidelines)
-        redoAction = lambda: self.setToSnapshop(redoSnaps)
+        redoAction = lambda: self.setToSnapshot(redoSnaps)
         undoSnaps = self._undo[group_name] # we can't put "self._undo" in the lambda below since it is set to None just after
-        undoAction = lambda: self.setToSnapshop(undoSnaps)
+        undoAction = lambda: self.setToSnapshot(undoSnaps)
         
         # end of save for this key 
         del self._undo[group_name]
