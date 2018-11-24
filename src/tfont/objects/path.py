@@ -145,7 +145,7 @@ class Path:
         # notify
         self.points.applyChange()
 
-    def setStartPoint(self, index):
+    def startAt(self, index):
         if self.open:
             # implement for endpoints?
             raise NotImplementedError
