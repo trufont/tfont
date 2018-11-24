@@ -24,13 +24,22 @@ def _structure_seq_dict(self, attr, data, type_):
 
 def _structure_Path(data, cls):
     points = []
-    for element in data:
-        if element.__class__ is dict:
-            point._extraData = element
+    extraData = None
+    if data[-1].__class__ is dict:
+        extraData = data[-1]
+        data = data[:-1]
+    for arr in data:
+        if arr[-1].__class__ is dict:
+            _extraData = arr[-1]
+            point = Point(*arr[:-1])
+            point._extraData = _extraData
         else:
-            point = Point(*element)
-            points.append(point)
-    return cls(points)
+            point = Point(*arr)
+        points.append(point)
+    path = cls(points)
+    if extraData is not None:
+        path._extraData = extraData
+    return path
 
 
 def _unstructure_Path(path):
@@ -44,10 +53,12 @@ def _unstructure_Path(path):
                 value = (point.x, point.y, ptType)
         else:
             value = (point.x, point.y)
-        data.append(RawJSON(dumps(value)))
         extraData = point._extraData
         if extraData:
-            data.append(extraData)
+            value += (extraData,)
+        data.append(RawJSON(dumps(value)))
+    if path._extraData:
+        data.append(path._extraData)
     return data
 
 
@@ -62,10 +73,12 @@ def _unstructure_Path_base(path):
                 value = (point.x, point.y, ptType)
         else:
             value = (point.x, point.y)
-        data.append(value)
         extraData = point._extraData
         if extraData:
-            data.append(extraData)
+            value += (extraData,)
+        data.append(value)
+    if path._extraData:
+        data.append(path._extraData)
     return data
 
 

@@ -5,14 +5,15 @@ import pprint
 from tfont.objects.point import Point
 from tfont.util import bezierMath
 from tfont.util.tracker import PathPointsList
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 
 @attr.s(cmp=False, repr=False, slots=True)
 class Path:
     _points: List[Point] = attr.ib(default=attr.Factory(list))
-    _id: str = attr.ib(default="")
+
+    _extraData: Optional[Dict] = attr.ib(default=None)
 
     _bounds: Optional[Tuple] = attr.ib(default=None, init=False)
     _graphicsPath: Optional[Any] = attr.ib(default=None, init=False)
@@ -55,6 +56,13 @@ class Path:
         return bounds
 
     @property
+    def extraData(self):
+        extraData = self._extraData
+        if extraData is None:
+            extraData = self._extraData = {}
+        return extraData
+
+    @property
     def graphicsPath(self):
         graphicsPath = self._graphicsPath
         if graphicsPath is None:
@@ -63,10 +71,23 @@ class Path:
 
     @property
     def id(self):
-        id_ = self._id
-        if not id_:
-            id_ = self._id = str(uuid4())
-        return id_
+        extraData = self.extraData
+        try:
+            return extraData["id"]
+        except KeyError:
+            extraData["id"] = id_ = str(uuid4())
+            return id_
+
+    @property
+    def _id(self):
+        return self.extraData.get("id", "")
+
+    @_id.setter
+    def _id(self, value):
+        if value:
+            self.extraData["id"] = value
+        else:
+            self.extraData.pop("id", None)
 
     @property
     def open(self):
