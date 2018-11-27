@@ -36,7 +36,8 @@ class Layer:
     _guidelines: List[Guideline] = attr.ib(default=attr.Factory(list))
     _paths: List[Path] = attr.ib(default=attr.Factory(list))
 
-    color: Optional[Tuple] = attr.ib(default=None)
+    # Color format: RGBA8888.
+    color: Optional[Tuple[int, int, int, int]] = attr.ib(default=None)
     _extraData: Optional[Dict] = attr.ib(default=None)
 
     _bounds: Optional[Tuple] = attr.ib(default=None, init=False)
