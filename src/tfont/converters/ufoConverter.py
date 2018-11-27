@@ -140,6 +140,11 @@ class UFOConverter(cattr.Converter):
                 vertOrigin = lib.pop("public.verticalOrigin", None)
                 if vertOrigin:
                     layer.yOrigin = vertOrigin
+                color = lib.pop("public.markColor", None)
+                if color:
+                    glyph.color = tuple(
+                        round(float(component) * 255) for component in color.split(",")
+                    )
                 if lib:
                     layer._extraData = lib
 
