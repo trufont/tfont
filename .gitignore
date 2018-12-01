@@ -4,7 +4,7 @@ dist/
 __pycache__/
 *.pyc
 .eggs/
-.cache/
+.*cache/
 .tox/
 .coverage
 .coverage.*
