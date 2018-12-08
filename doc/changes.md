@@ -195,7 +195,7 @@ class Path:
     # - segment ops <-- if we access points through tracker
     #                   then we've got nothing more to do
     # - selected <-- what does setter do anyway?
-    # - setStartPoint()
+    # - startAt()
     # - transform() <-- no-op if 1 0 0 1 0 0
     #                   or if layer is empty
 
