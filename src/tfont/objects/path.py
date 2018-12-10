@@ -224,9 +224,9 @@ class SegmentsList:
     def splitSegment(self, index, t):
         segments = self._segments
         segment = segments[index]
+        segment_type = segment.type
         pts = segment.points
-        pts_len = len(pts)
-        if pts_len == 2:
+        if segment_type == "line":
             p1, p2 = pts
             p = Point(
                 p1.x + (p2.x - p1.x) * t,
@@ -238,7 +238,7 @@ class SegmentsList:
             for seg in segments[index+1:]:
                 seg._start += 1
                 seg._end += 1
-        elif pts_len == 4:
+        elif segment_type == "curve":
             # inline
             p1, p2, p3, p4 = [(p.x, p.y) for p in pts]
             (p1, p2, p3, p4), (p5, p6, p7, p8) = bezierTools.splitCubicAtT(
@@ -259,7 +259,7 @@ class SegmentsList:
                 seg._start += 3
                 seg._end += 3
         else:
-            raise ValueError("unattended len %d" % pts_len)
+            raise ValueError(f"unattended curve type {segment_type}")
         return newSegment
 
 
@@ -277,14 +277,12 @@ class Segment:
     @property
     def bounds(self):
         points = self.points
-        pts_len = len(points)
-        if pts_len == 1:
-            # move
+        segment_type = self.type
+        if segment_type == "move":
             p = points[0]
             x, y = p.x, p.y
             return x, y, x, y
-        elif pts_len == 2:
-            # line
+        elif segment_type == "line":
             p0, p1 = points[0], points[1]
             left, right = p0.x, p1.x
             if left > right:
@@ -293,13 +291,13 @@ class Segment:
             if bottom > top:
                 bottom, top = top, bottom
             return left, bottom, right, top
-        elif pts_len == 4:
-            # curve
+        elif segment_type == "curve":
             return bezierMath.curveBounds(*points)
+        elif segment_type == "qcurve":
+            return bezierMath.qcurveBounds(*points)
         else:
-            # quads?
             raise NotImplementedError(
-                "cannot compute bounds for %r segment" % self.type)
+                "cannot compute bounds for %r segment" % segment_type)
 
     @property
     def offCurves(self):
@@ -345,16 +343,16 @@ class Segment:
 
     def intersectLine(self, x1, y1, x2, y2):
         points = self.points
-        pts_len = len(points)
-        if pts_len == 2:
-            # line
+        segment_type = self.type
+        if segment_type == "line":
             ret = bezierMath.lineIntersection(x1, y1, x2, y2, *points)
             if ret is not None:
                 return [ret]
-        elif pts_len == 4:
-            # curve
+        elif segment_type == "curve":
             return bezierMath.curveIntersections(x1, y1, x2, y2, *points)
-        # move, quads
+        elif segment_type == "qcurve":
+            return bezierMath.qcurveIntersections(x1, y1, x2, y2, *points)
+        # move
         return []
 
     # ! this will invalidate the segments
@@ -387,11 +385,9 @@ class Segment:
 
     def projectPoint(self, x, y):
         points = self.points
-        pts_len = len(points)
-        if pts_len == 2:
-            # line
+        segment_type = self.type
+        if segment_type == "line":
             return bezierMath.lineProjection(x, y, *points)
-        elif pts_len == 4:
-            # curve
+        elif segment_type == "curve":
             return bezierMath.curveProjection(x, y, *points)
         return None
