@@ -386,7 +386,7 @@ class Layer:
         intersections_append = intersections.append
         for path in self._paths:
             for segment in path.segments:
-                for x, y, _ in segment.intersectLine(x1, y1, x2, y2):
+                for x, y, _, _ in segment.intersectLine(x1, y1, x2, y2):
                     intersections_append((x, y))
         intersections.sort(key=partial(squaredDistance, x1, y1))
         return intersections

@@ -221,7 +221,7 @@ class SegmentsList:
         yield from segments[start:]
         yield from segments[:start]
 
-    def splitSegment(self, index, t):
+    def splitSegment(self, index, t, subsegment_index):
         segments = self._segments
         segment = segments[index]
         segment_type = segment.type

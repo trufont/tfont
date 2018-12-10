@@ -13,5 +13,5 @@ def test_Path_bounds(ConvertedTestFont):
 def test_Path_intersection():
     # Example cribbed from https://stackoverflow.com/questions/27664298/calculating-intersection-point-of-quadratic-bezier-curve
     qcurve = Path([Point(125, 200, "move"), Point(250, 225), Point(275, 100, "qcurve")])
-    x, y, _ = qcurve.segments[1].intersectLine(30, 125, 300, 175)[0]
+    x, y, _, _ = qcurve.segments[1].intersectLine(30, 125, 300, 175)[0]
     assert (round(x), round(y)) == (248, 165)
