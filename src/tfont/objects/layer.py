@@ -443,7 +443,7 @@ class Layer:
         if components:
             snaps.append(('components', tfc.unstructure(self._components)))
         if self.selection:
-            sel = tfc.unstructure(self.selection)
+            sel = tfc.unstructure(self._selection)
             logging.debug("LAYER: selection snapshot - selection is: {}".format(list(sel)))
             snaps.append(('selection',list(sel)))
         return snaps
@@ -476,20 +476,44 @@ class Layer:
                 self.components.applyChange()
             elif name == 'selection': 
                 logging.debug("LAYER: setToSnapshot - selection before is: {}".format(self.selection))
-                self.selection.clear() 
-                self.selection.update(tfc.structure(unstructured, List[Any]))
+                self.selection.clear()
+                selection = tfc.structure(unstructured, List[Any]) 
+                
+                # update _parent field
+                for obj in selection:
+                    logging.debug("LAYER: setToSnapshot - obj is {}".format(obj))
+                    try:
+                        if isinstance(obj, Point):
+                            logging.debug("LAYER: setToSnapshot - is a point")
+                            for path in self._paths:
+                                for pt in path._points:
+                                    if pt.x == obj.x and pt.y == obj.y and pt.type == obj.type:
+                                        self._selection.add(pt)
+                                        logging.debug("LAYER: setToSnapshot - find one point to update")
+                                    # if obj == pt:
+                                    #     obj._parent = pt._parent
+
+                        elif isinstance(obj, Path):
+                            logging.debug("LAYER: setToSnapshot - is a path") 
+                            for path in self._paths:
+                                if obj == path:
+                                    self._selection.add(path)
+
+                        elif isinstance(obj, (Anchor, Guideline, Component))
+                            raise NotImplementedError
+
+                    except Exception as e:
+                        logging.error("LAYER: setToSnapshot - error iterate obj from selection -> {}".format(str(e)))
                 logging.debug("LAYER: setToSnapshot - selection after is: {}".format(self.selection))
 
-    def beginUndoGroup(self, group_name: str, paths=True, anchors=True, components=True, guidelines=True):
+    def beginUndo(self, group_name: str, paths=True, anchors=True, components=True, guidelines=True):
         #FIXME: if self._undo is not None, then log it / throw an exception
         if not self._undo:
             self._undo = {}
         if group_name not in self._undo:
             self._undo[group_name] = self.snapshot(paths, anchors, components, guidelines)
-    beginUndo = beginUndoGroup
 
-
-    def endUndoGroup(self, group_name: str):
+    def endUndo(self, group_name: str):
         if self._undo is None or group_name not in self._undo: 
             raise KeyError("LAYER: endUndoGroup -> Key error {} does not exist".format(group_name))
 
@@ -507,6 +531,4 @@ class Layer:
         
         # end of save for this key 
         del self._undo[group_name]
-
         return undoAction, redoAction, (undoSnaps, redoSnaps)  
-    endUndo = endUndoGroup
