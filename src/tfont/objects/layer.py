@@ -499,7 +499,7 @@ class Layer:
                                 if obj == path:
                                     self._selection.add(path)
 
-                        elif isinstance(obj, (Anchor, Guideline, Component))
+                        elif isinstance(obj, (Anchor, Guideline, Component)):
                             raise NotImplementedError
 
                     except Exception as e:
