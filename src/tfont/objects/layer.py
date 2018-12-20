@@ -23,7 +23,6 @@ def squaredDistance(x1, y1, item):
 
 @attr.s(cmp=False, repr=False, slots=True)
 class Layer:
-    a = 10
     masterName: str = attr.ib(default="")
     _name: str = attr.ib(default="")
     location: Optional[Dict[str, int]] = attr.ib(default=None)
@@ -443,7 +442,10 @@ class Layer:
             snaps.append(('guidelines', tfc.unstructure(self._guidelines)))
         if components:
             snaps.append(('components', tfc.unstructure(self._components)))
-
+        if self.selection:
+            sel = tfc.unstructure(self.selection)
+            logging.debug("LAYER: selection snapshot - selection is: {}".format(list(sel)))
+            snaps.append(('selection',list(sel)))
         return snaps
 
     def setToSnapshot(self, snaps):
@@ -472,6 +474,11 @@ class Layer:
                 # for comp in self.components:
                 #     comp.selected = True
                 self.components.applyChange()
+            elif name == 'selection': 
+                logging.debug("LAYER: setToSnapshot - selection before is: {}".format(self.selection))
+                self.selection.clear() 
+                self.selection.update(tfc.structure(unstructured, List[Any]))
+                logging.debug("LAYER: setToSnapshot - selection after is: {}".format(self.selection))
 
     def beginUndoGroup(self, group_name: str, paths=True, anchors=True, components=True, guidelines=True):
         #FIXME: if self._undo is not None, then log it / throw an exception
@@ -479,6 +486,7 @@ class Layer:
             self._undo = {}
         if group_name not in self._undo:
             self._undo[group_name] = self.snapshot(paths, anchors, components, guidelines)
+    beginUndo = beginUndoGroup
 
 
     def endUndoGroup(self, group_name: str):
@@ -500,4 +508,5 @@ class Layer:
         # end of save for this key 
         del self._undo[group_name]
 
-        return undoAction, redoAction, (undoSnaps, redoSnaps)
+        return undoAction, redoAction, (undoSnaps, redoSnaps)  
+    endUndo = endUndoGroup
