@@ -1,6 +1,7 @@
 import attr
 from copy import copy
 from fontTools.misc import bezierTools
+from fontTools.pens import basePen
 import pprint
 from tfont.objects.point import Point
 from tfont.util import bezierMath
@@ -258,6 +259,26 @@ class SegmentsList:
             for seg in segments[index+1:]:
                 seg._start += 3
                 seg._end += 3
+        elif segment_type == "qcurve":
+            ps = [(p.x, p.y) for p in pts]
+            p1 = ps[subsegment_index]
+            p2, p3 = basePen.decomposeQuadraticSegment(ps[subsegment_index + 1 :])[0]
+            (p1, p2, p3), (p4, p5, p6) = bezierTools.splitQuadraticAtT(p1, p2, p3, t)
+            points = self._points
+            start = segment._start + subsegment_index
+            p = points[start]
+            p.x, p.y = p5
+            p = points[start + 1]
+            p.x, p.y = p6
+            points[start:start] = [
+                Point(*p2),
+                Point(*p3, "qcurve"),
+            ]
+            newSegment = copy(segment)
+            segments.insert(index, newSegment)
+            for seg in segments[index + 1 :]:
+                seg._start += 2
+                seg._end += 2
         else:
             raise ValueError(f"unattended curve type {segment_type}")
         return newSegment
