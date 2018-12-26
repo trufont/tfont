@@ -485,19 +485,21 @@ class Layer:
                     try:
                         if isinstance(obj, Point):
                             logging.debug("LAYER: setToSnapshot - is a point")
-                            for path in self._paths:
-                                for pt in path._points:
-                                    if pt.x == obj.x and pt.y == obj.y and pt.type == obj.type:
-                                        self._selection.add(pt)
-                                        logging.debug("LAYER: setToSnapshot - find one point to update")
-                                    # if obj == pt:
-                                    #     obj._parent = pt._parent
+                            # for path in self._paths:
+                            #     for pt in path._points:
+                            for pt in (pt for path in self._paths for pt in path._points):
+                                if pt.x == obj.x and pt.y == obj.y and pt.type == obj.type:
+                                    self._selection.add(pt)
+                                    logging.debug("LAYER: setToSnapshot - find a point to update")
+                                    break 
 
                         elif isinstance(obj, Path):
                             logging.debug("LAYER: setToSnapshot - is a path") 
                             for path in self._paths:
                                 if obj == path:
                                     self._selection.add(path)
+                                    logging.debug("LAYER: setToSnapshot - find a path to update")
+                                    break 
 
                         elif isinstance(obj, (Anchor, Guideline, Component)):
                             raise NotImplementedError
