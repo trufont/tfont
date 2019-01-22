@@ -78,3 +78,40 @@ def test_SegmentList_splitSegment_qcurve_implied():
         ]
     ]
     assert qps == qps_expected
+
+
+def test_SegmentList_splitSegment_qcurve_implied2():
+    test_glyph = Glyph("a")
+    test_layer = Layer("test")
+    qcurve = Path(  # Ubuntu-B "C"
+        [
+            Point(50, 347, "line"),
+            Point(50, 433),  # subsegment_index 1
+            Point(104, 568),
+            Point(198, 661),
+            Point(328, 709),
+            Point(404, 709, "qcurve"),
+        ]
+    )
+    test_layer.paths.append(qcurve)
+    test_glyph.layers.append(test_layer)
+
+    qcurve.segments.splitSegment(1, 0.4, 1)
+
+    qps = [(p.x, p.y, p.type) for p in qcurve.points]
+    qps_expected = [
+        (int(p.x), int(p.y), p.type)
+        for p in [  # XXX: turn implied on curves before and after into real on curves and use them in splitQuadraticAtT? t accurate then?
+            Point(50, 347, "line"),  # original start of segment
+            Point(50, 433),  #
+            Point(77, 500, "qcurve"),  # implied on curve -> on curve
+            Point(88, 529),  #
+            Point(103, 554, "qcurve"),  # split point
+            Point(123, 587),  #
+            Point(151, 614, "qcurve"),  # implied on curve -> on curve
+            Point(198, 661),
+            Point(328, 709),
+            Point(404, 709, "qcurve"),
+        ]
+    ]
+    assert qps == qps_expected

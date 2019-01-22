@@ -411,4 +411,6 @@ class Segment:
             return bezierMath.lineProjection(x, y, *points)
         elif segment_type == "curve":
             return bezierMath.curveProjection(x, y, *points)
+        elif segment_type == "qcurve":
+            raise NotImplementedError("Cannot project point on qcurve yet.")
         return None
