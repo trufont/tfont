@@ -19,10 +19,7 @@ from typing import Dict, Union
 # TODO we should have a custom type for caching dicts
 def _structure_seq_dict(self, attr, data, type_):
     cls = type_.__args__[1]  # dict key type
-    # There seems to be a bug in the way data is parsed
-    # Should be:
-    # for _, e in data.items()
-    return dict((e[attr], self.structure(e, cls)) for e in data)
+    return dict((e[attr], self.structure(e, cls)) for _, e in data.items())
 
 
 def _structure_Path(data, cls):
