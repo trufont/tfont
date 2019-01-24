@@ -105,9 +105,9 @@ def test_SegmentList_splitSegment_qcurve_implied2():
             Point(50, 347, "line"),  # original start of segment
             Point(50, 433),  #
             Point(77, 500, "qcurve"),  # implied on curve -> on curve
-            Point(88, 529),  #
-            Point(103, 554, "qcurve"),  # split point
-            Point(123, 587),  #
+            Point(87, 529),  #
+            Point(103, 527, "qcurve"),  # split point
+            Point(122, 586),  #
             Point(151, 614, "qcurve"),  # implied on curve -> on curve
             Point(198, 661),
             Point(328, 709),
