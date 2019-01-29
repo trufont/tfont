@@ -1,5 +1,8 @@
+import pytest
+
 import tfont.util.tracker
-from tfont.objects import Path, Point, Layer, Glyph
+from tfont.objects import Glyph, Layer, Path, Point
+from tfont.objects.path import Segment
 
 
 def test_Path_bounds(ConvertedTestFont):
@@ -18,75 +21,14 @@ def test_Path_intersection():
     assert (round(x), round(y)) == (248, 165)
 
 
-def test_SegmentList_splitSegment_qcurve():
-    test_glyph = Glyph("a")
-    test_layer = Layer("test")
-    qcurve = Path([Point(0, 0), Point(50, 100), Point(100, 0, "qcurve")])
-    test_layer.paths.append(qcurve)
-    test_glyph.layers.append(test_layer)
-
-    assert len(qcurve.segments) == 1
-    qcurve.segments.splitSegment(0, 0.5, 1)
-    assert len(qcurve.segments) == 2
-    qps = [(p.x, p.y, p.type) for p in qcurve.points]
-    qps_expected = [
-        (p.x, p.y, p.type)
-        for p in [
-            Point(0, 0),
-            Point(25, 50),
-            Point(50, 50, "qcurve"),
-            Point(75, 50),
-            Point(100, 0, "qcurve"),
-        ]
-    ]
-    assert qps == qps_expected
-
-
-def test_SegmentList_splitSegment_qcurve_implied():
+@pytest.fixture
+def short_qcurve():
     test_glyph = Glyph("a")
     test_layer = Layer("test")
     qcurve = Path(
         [
-            Point(1, 2),
-            Point(3, 4),
-            Point(5, 6),
-            Point(7, 8),
-            Point(0, 0),
-            Point(50, 100),
-            Point(100, 0, "qcurve"),
-        ]
-    )
-    test_layer.paths.append(qcurve)
-    test_glyph.layers.append(test_layer)
-
-    assert len(qcurve.segments) == 1
-    qcurve.segments.splitSegment(0, 0.5, 5)
-    assert len(qcurve.segments) == 2
-    qps = [(p.x, p.y, p.type) for p in qcurve.points]
-    qps_expected = [
-        (p.x, p.y, p.type)
-        for p in [
-            Point(1, 2),
-            Point(3, 4),
-            Point(5, 6),
-            Point(7, 8),
-            Point(0, 0),
-            Point(25, 50),
-            Point(50, 50, "qcurve"),
-            Point(75, 50),
-            Point(100, 0, "qcurve"),
-        ]
-    ]
-    assert qps == qps_expected
-
-
-def test_SegmentList_splitSegment_qcurve_implied2():
-    test_glyph = Glyph("a")
-    test_layer = Layer("test")
-    qcurve = Path(  # Ubuntu-B "C"
-        [
             Point(50, 347, "line"),
-            Point(50, 433),  # subsegment_index 1
+            Point(50, 433),
             Point(104, 568),
             Point(198, 661),
             Point(328, 709),
@@ -95,23 +37,96 @@ def test_SegmentList_splitSegment_qcurve_implied2():
     )
     test_layer.paths.append(qcurve)
     test_glyph.layers.append(test_layer)
+    return qcurve
 
-    qcurve.segments.splitSegment(1, 0.4, 1)
 
-    qps = [(p.x, p.y, p.type) for p in qcurve.points]
+def test_SegmentList_splitSegment_qcurve_start(short_qcurve):
+    short_qcurve.segments.splitSegment(1, 0.4, 0)
+
+    qps = [(int(p.x), int(p.y), p.type) for p in short_qcurve.points]
     qps_expected = [
         (int(p.x), int(p.y), p.type)
-        for p in [  # XXX: turn implied on curves before and after into real on curves and use them in splitQuadraticAtT? t accurate then?
-            Point(50, 347, "line"),  # original start of segment
-            Point(50, 433),  #
-            Point(77, 500, "qcurve"),  # implied on curve -> on curve
-            Point(87, 529),  #
-            Point(103, 527, "qcurve"),  # split point
-            Point(122, 586),  #
-            Point(151, 614, "qcurve"),  # implied on curve -> on curve
+        for p in [
+            Point(50, 347, "line"),
+            Point(50, 381),
+            Point(54, 412, "qcurve"),
+            Point(60, 460),
+            Point(77, 500, "qcurve"),
+            Point(104, 568),
             Point(198, 661),
             Point(328, 709),
             Point(404, 709, "qcurve"),
         ]
     ]
     assert qps == qps_expected
+
+    qps_segments = [(s._start, s._end, s.type) for s in short_qcurve.segments._segments]
+    qps_segments_expected = [
+        (0, 0, "line"),
+        (1, 2, "qcurve"),
+        (3, 4, "qcurve"),
+        (5, 8, "qcurve"),
+    ]
+    assert qps_segments == qps_segments_expected
+
+
+def test_SegmentList_splitSegment_qcurve_middle(short_qcurve):
+    short_qcurve.segments.splitSegment(1, 0.4, 1)
+
+    qps = [(int(p.x), int(p.y), p.type) for p in short_qcurve.points]
+    qps_expected = [
+        (int(p.x), int(p.y), p.type)
+        for p in [
+            Point(50, 347, "line"),
+            Point(50, 433),
+            Point(77, 500, "qcurve"),
+            Point(87, 527),
+            Point(101, 551, "qcurve"),
+            Point(122, 586),
+            Point(151, 614, "qcurve"),
+            Point(198, 661),
+            Point(328, 709),
+            Point(404, 709, "qcurve"),
+        ]
+    ]
+    assert qps == qps_expected
+
+    qps_segments = [(s._start, s._end, s.type) for s in short_qcurve.segments._segments]
+    qps_segments_expected = [
+        (0, 0, "line"),
+        (1, 2, "qcurve"),
+        (3, 4, "qcurve"),
+        (5, 6, "qcurve"),
+        (7, 9, "qcurve"),
+    ]
+    assert qps_segments == qps_segments_expected
+
+
+def test_SegmentList_splitSegment_qcurve_end(short_qcurve):
+    short_qcurve.segments.splitSegment(1, 0.4, 3)
+
+    qps = [(int(p.x), int(p.y), p.type) for p in short_qcurve.points]
+    qps_expected = [
+        (int(p.x), int(p.y), p.type)
+        for p in [
+            Point(50, 347, "line"),
+            Point(50, 433),
+            Point(104, 568),
+            Point(198, 661),
+            Point(263, 685, "qcurve"),
+            Point(289, 694),
+            Point(316, 700, "qcurve"),
+            Point(358, 709),
+            Point(404, 709, "qcurve"),
+        ]
+    ]
+    assert qps == qps_expected
+
+    qps_segments = [(s._start, s._end, s.type) for s in short_qcurve.segments._segments]
+    qps_segments_expected = [
+        (0, 0, "line"),
+        (1, 4, "qcurve"),
+        (5, 6, "qcurve"),
+        (7, 8, "qcurve"),
+    ]
+    assert qps_segments == qps_segments_expected
