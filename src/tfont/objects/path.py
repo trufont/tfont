@@ -260,25 +260,41 @@ class SegmentsList:
                 seg._start += 3
                 seg._end += 3
         elif segment_type == "qcurve":
-            ps = [(p.x, p.y) for p in pts]
-            p1 = ps[subsegment_index]
-            p2, p3 = basePen.decomposeQuadraticSegment(ps[subsegment_index + 1 :])[0]
-            (p1, p2, p3), (p4, p5, p6) = bezierTools.splitQuadraticAtT(p1, p2, p3, t)
+            # This algorithm turns two enclosing implied on-curve points next
+            # to the off-curve point at subsegment_index into actual on-curve points.
+            # pts always includes the enclosing on-curve points of a segment while 
+            # subsegment_index always points in between them.
+            pts_pointer = subsegment_index + 1
+            p1_ = pts[pts_pointer - 1]
+            p2_ = pts[pts_pointer]  # Always an off-curve.
+            assert p2_.type is None
+            p3_ = pts[pts_pointer + 1]
+            if p1_.type is None:  # p1 is an implied on-curve point.
+                p1t = (0.5 * (p1_.x + p2_.x), 0.5 * (p1_.y + p2_.y))
+            else:
+                p1t = (p1_.x, p1_.y)
+            p2t = (p2_.x, p2_.y)
+            if p3_.type is None:  # p3 is an implied on-curve point.
+                p3t = (0.5 * (p3_.x + p2_.x), 0.5 * (p3_.y + p2_.y))
+            else:
+                p3t = (p3_.x, p3_.y)
+
+            (p1, p2, p3), (p4, p5, p6) = bezierTools.splitQuadraticAtT(p1t, p2t, p3t, t)
+
+            points_to_insert = []
+            if p1_.type is None:
+                points_to_insert.append(Point(*p1, "qcurve"))
+            points_to_insert.extend([Point(*p2), Point(*p3, "qcurve"), Point(*p5)])
+            if p3_.type is None:
+                points_to_insert.append(Point(*p6, "qcurve"))
+
             points = self._points
             start = segment._start + subsegment_index
-            p = points[start]
-            p.x, p.y = p5
-            p = points[start + 1]
-            p.x, p.y = p6
-            points[start:start] = [
-                Point(*p2),
-                Point(*p3, "qcurve"),
-            ]
-            newSegment = copy(segment)
-            segments.insert(index, newSegment)
-            for seg in segments[index + 1 :]:
-                seg._start += 2
-                seg._end += 2
+            points[start : start + 1] = points_to_insert
+
+            self._segments = []
+            self.__attrs_post_init__()
+            newSegment = copy(segments[index])
         else:
             raise ValueError(f"unattended curve type {segment_type}")
         return newSegment
