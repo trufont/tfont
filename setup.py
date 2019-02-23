@@ -18,7 +18,7 @@ setup(
     package_dir={"": "src"},
     packages=find_packages("src"),
     install_requires=[
-        "fonttools>=3.24.0",
+        "fonttools[ufo,lxml]>=3.31.0",
         "python-rapidjson>=0.5.0",
         "attrs>=17.3.0",
         "cattrs>=0.8.0",
