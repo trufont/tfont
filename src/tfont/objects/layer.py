@@ -29,7 +29,7 @@ class Layer:
     # should default to ascender+descender and only be stored if different from
     # that value -- add a None value for it and a property?
     height: Union[int, float] = attr.ib(default=0)
-    yOrigin: Union[int, float] = attr.ib(default=0)
+    yOrigin: Optional[Union[int, float]] = attr.ib(default=None)
 
     _anchors: Dict[str, Anchor] = attr.ib(default=attr.Factory(dict))
     _components: List[Component] = attr.ib(default=attr.Factory(list))
