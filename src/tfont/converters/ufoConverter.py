@@ -69,8 +69,9 @@ class UFOConverter(cattr.Converter):
         if info.styleName:
             master.name = info.styleName
         for blues in (info.postscriptBlueValues, info.postscriptOtherBlues):
-            for yMin, yMax in zip(blues[::2], blues[1::2]):
-                master.alignmentZones.append(AlignmentZone(yMin, yMax-yMin))
+            if blues is not None:
+                for yMin, yMax in zip(blues[::2], blues[1::2]):
+                    master.alignmentZones.append(AlignmentZone(yMin, yMax-yMin))
         if info.postscriptStemSnapH:
             master.hStems = info.postscriptStemSnapH
         if info.postscriptStemSnapV:
