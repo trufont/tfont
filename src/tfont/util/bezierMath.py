@@ -1,4 +1,7 @@
-from fontTools.misc import bezierTools
+from typing import List, Tuple
+
+from fontTools.misc import bezierTools, arrayTools
+from fontTools.pens import basePen
 import math
 
 # TODO remove fontTools dependency/inline some of these funcs
@@ -54,6 +57,18 @@ def curveBounds(p0, p1, p2, p3):
 
     return min(xs), min(ys), max(xs), max(ys)
 
+
+def qcurveBounds(*ps):
+    first_anchor = (ps[0].x, ps[0].y)
+    bounds = (0, 0, 0, 0)
+    for p1, p2 in basePen.decomposeQuadraticSegment([(p.x, p.x) for p in ps[1:]]):
+        bounds = arrayTools.unionRect(
+            bounds, bezierTools.calcQuadraticBounds(first_anchor, p1, p2)
+        )
+        first_anchor = p2
+    return bounds
+
+
 # ------------
 # Intersection
 # ------------
@@ -66,6 +81,10 @@ def curveIntersections(x1, y1, x2, y2, p1, p2, p3, p4):
 
     Takes four scalars describing line parameters and four points describing
     curve.
+
+    Returns a List of intersections in Tuples of the format (coordinate_x,
+    coordinate_y, term, subsegment_index == 0). The subsegment_index is only
+    used for quadratic curves.
     """
     bx, by = x1 - x2, y2 - y1
     m = x1 * (y1 - y2) + y1 * (x2 - x1)
@@ -90,7 +109,54 @@ def curveIntersections(x1, y1, x2, y2, p1, p2, p3, p4):
             s = (s1 - y1) / (y2 - y1)
         if s < 0 or s > 1:
             continue
-        sol.append((s0, s1, t))
+        sol.append((s0, s1, t, 0))
+    return sol
+
+
+def qcurveIntersections(x1, y1, x2, y2, *pts) -> List[Tuple[int, int, int, int]]:
+    """
+    Computes intersection between a quadratic spline and a line segment.
+
+    Adapted from curveIntersections(). Takes four scalars describing line and an
+    Iterable of points describing a quadratic curve, including the first (==
+    anchor) point. Quadatric curves are special in that they can consist of
+    implied on-curve points, which is why this function returns a
+    `subsegment_index` to associate a `t` with the correct subsegment.
+
+    Returns a List of intersections in Tuples of the format (coordinate_x,
+    coordinate_y, term, subsegment_index).
+    """
+
+    sol = []
+    points = [(p.x, p.y) for p in pts]
+
+    nx, ny = x1 - x2, y2 - y1
+    m = x1 * (y1 - y2) + y1 * (x2 - x1)
+    # Decompose a segment with potentially implied on-curve points into subsegments.
+    # p1 is the anchor, p2 the control handle, p3 the (implied) on-curve point in the
+    # subsegment.
+    p1 = points[0]
+    for index, (p2, p3) in enumerate(basePen.decomposeQuadraticSegment(points[1:])):
+        (ax, ay), (bx, by), (cx, cy) = bezierTools.calcQuadraticParameters(p1, p2, p3)
+        p1 = p3  # prepare for next turn
+
+        pc0 = ny * ax + nx * ay
+        pc1 = ny * bx + nx * by
+        pc2 = ny * cx + nx * cy + m
+        r = bezierTools.solveQuadratic(pc0, pc1, pc2)
+
+        for t in r:
+            if t < 0 or t > 1:
+                continue
+            sx = (ax * t + bx) * t + cx
+            sy = (ay * t + by) * t + cy
+            if (x2 - x1) != 0:
+                s = (sx - x1) / (x2 - x1)
+            else:
+                s = (sy - y1) / (y2 - y1)
+            if s < 0 or s > 1:
+                continue
+            sol.append((sx, sy, t, index))
     return sol
 
 
@@ -102,6 +168,10 @@ def lineIntersection(x1, y1, x2, y2, p3, p4):
 
     Takes four scalars describing line parameters and two points describing
     line.
+
+    Returns a List of intersections in Tuples of the format (coordinate_x,
+    coordinate_y, term, subsegment_index == 0). The subsegment_index is only
+    used for quadratic curves.
     """
     x3, y3 = p3.x, p3.y
     x4, y4 = p4.x, p4.y
@@ -116,7 +186,7 @@ def lineIntersection(x1, y1, x2, y2, p3, p4):
     s = (-By_Ay * (x3 - x1) + Bx_Ax * (y3 - y1)) / determinant
     t = (Dx_Cx * (y3 - y1) - Dy_Cy * (x3 - x1)) / determinant
     if 0 <= s <= 1 and 0 <= t <= 1:
-        return x3 + (t * Bx_Ax), y3 + (t * By_Ay), t
+        return x3 + (t * Bx_Ax), y3 + (t * By_Ay), t, 0
     return None
 
 # ----------

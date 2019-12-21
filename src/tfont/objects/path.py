@@ -1,6 +1,7 @@
 import attr
 from copy import copy
 from fontTools.misc import bezierTools
+from fontTools.pens import basePen
 import pprint
 from tfont.objects.point import Point
 from tfont.util import bezierMath
@@ -221,12 +222,12 @@ class SegmentsList:
         yield from segments[start:]
         yield from segments[:start]
 
-    def splitSegment(self, index, t):
+    def splitSegment(self, index, t, subsegment_index):
         segments = self._segments
         segment = segments[index]
+        segment_type = segment.type
         pts = segment.points
-        pts_len = len(pts)
-        if pts_len == 2:
+        if segment_type == "line":
             p1, p2 = pts
             p = Point(
                 p1.x + (p2.x - p1.x) * t,
@@ -238,7 +239,7 @@ class SegmentsList:
             for seg in segments[index+1:]:
                 seg._start += 1
                 seg._end += 1
-        elif pts_len == 4:
+        elif segment_type == "curve":
             # inline
             p1, p2, p3, p4 = [(p.x, p.y) for p in pts]
             (p1, p2, p3, p4), (p5, p6, p7, p8) = bezierTools.splitCubicAtT(
@@ -258,8 +259,44 @@ class SegmentsList:
             for seg in segments[index+1:]:
                 seg._start += 3
                 seg._end += 3
+        elif segment_type == "qcurve":
+            # This algorithm turns two enclosing implied on-curve points next
+            # to the off-curve point at subsegment_index into actual on-curve points.
+            # pts always includes the enclosing on-curve points of a segment while 
+            # subsegment_index always points in between them.
+            pts_pointer = subsegment_index + 1
+            p1_ = pts[pts_pointer - 1]
+            p2_ = pts[pts_pointer]  # Always an off-curve.
+            assert p2_.type is None
+            p3_ = pts[pts_pointer + 1]
+            if p1_.type is None:  # p1 is an implied on-curve point.
+                p1t = (0.5 * (p1_.x + p2_.x), 0.5 * (p1_.y + p2_.y))
+            else:
+                p1t = (p1_.x, p1_.y)
+            p2t = (p2_.x, p2_.y)
+            if p3_.type is None:  # p3 is an implied on-curve point.
+                p3t = (0.5 * (p3_.x + p2_.x), 0.5 * (p3_.y + p2_.y))
+            else:
+                p3t = (p3_.x, p3_.y)
+
+            (p1, p2, p3), (p4, p5, p6) = bezierTools.splitQuadraticAtT(p1t, p2t, p3t, t)
+
+            points_to_insert = []
+            if p1_.type is None:
+                points_to_insert.append(Point(*p1, "qcurve"))
+            points_to_insert.extend([Point(*p2), Point(*p3, "qcurve"), Point(*p5)])
+            if p3_.type is None:
+                points_to_insert.append(Point(*p6, "qcurve"))
+
+            points = self._points
+            start = segment._start + subsegment_index
+            points[start : start + 1] = points_to_insert
+
+            self._segments = []
+            self.__attrs_post_init__()
+            newSegment = copy(segments[index])
         else:
-            raise ValueError("unattended len %d" % pts_len)
+            raise ValueError(f"unattended curve type {segment_type}")
         return newSegment
 
 
@@ -277,14 +314,12 @@ class Segment:
     @property
     def bounds(self):
         points = self.points
-        pts_len = len(points)
-        if pts_len == 1:
-            # move
+        segment_type = self.type
+        if segment_type == "move":
             p = points[0]
             x, y = p.x, p.y
             return x, y, x, y
-        elif pts_len == 2:
-            # line
+        elif segment_type == "line":
             p0, p1 = points[0], points[1]
             left, right = p0.x, p1.x
             if left > right:
@@ -293,13 +328,13 @@ class Segment:
             if bottom > top:
                 bottom, top = top, bottom
             return left, bottom, right, top
-        elif pts_len == 4:
-            # curve
+        elif segment_type == "curve":
             return bezierMath.curveBounds(*points)
+        elif segment_type == "qcurve":
+            return bezierMath.qcurveBounds(*points)
         else:
-            # quads?
             raise NotImplementedError(
-                "cannot compute bounds for %r segment" % self.type)
+                "cannot compute bounds for %r segment" % segment_type)
 
     @property
     def offCurves(self):
@@ -345,16 +380,16 @@ class Segment:
 
     def intersectLine(self, x1, y1, x2, y2):
         points = self.points
-        pts_len = len(points)
-        if pts_len == 2:
-            # line
+        segment_type = self.type
+        if segment_type == "line":
             ret = bezierMath.lineIntersection(x1, y1, x2, y2, *points)
             if ret is not None:
                 return [ret]
-        elif pts_len == 4:
-            # curve
+        elif segment_type == "curve":
             return bezierMath.curveIntersections(x1, y1, x2, y2, *points)
-        # move, quads
+        elif segment_type == "qcurve":
+            return bezierMath.qcurveIntersections(x1, y1, x2, y2, *points)
+        # move
         return []
 
     # ! this will invalidate the segments
@@ -387,11 +422,11 @@ class Segment:
 
     def projectPoint(self, x, y):
         points = self.points
-        pts_len = len(points)
-        if pts_len == 2:
-            # line
+        segment_type = self.type
+        if segment_type == "line":
             return bezierMath.lineProjection(x, y, *points)
-        elif pts_len == 4:
-            # curve
+        elif segment_type == "curve":
             return bezierMath.curveProjection(x, y, *points)
+        elif segment_type == "qcurve":
+            raise NotImplementedError("Cannot project point on qcurve yet.")
         return None

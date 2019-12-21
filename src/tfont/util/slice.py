@@ -66,8 +66,9 @@ def slicePaths(layer, x1, y1, x2, y2):
                 continue
             # TODO: handle more
             intersection = intersections[0]
+            _, _, t, subsegment_index = intersection
             splitSegments.append((
-                segments.splitSegment(index, intersection[-1]),
+                segments.splitSegment(index, t, subsegment_index),
                 segments.iterfrom(index)
             ))
             index += 2
