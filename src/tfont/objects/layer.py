@@ -1,6 +1,7 @@
 import attr
 from datetime import datetime
 from functools import partial
+from tfont.objects.point import Point
 from tfont.objects.anchor import Anchor
 from tfont.objects.component import Component
 from tfont.objects.guideline import Guideline
@@ -12,12 +13,13 @@ from tfont.util.tracker import (
 from time import time
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
+import logging
+
 
 def squaredDistance(x1, y1, item):
     x2, y2 = item
     dx, dy = x2 - x1, y2 - y1
     return dx*dx + dy*dy
-
 
 @attr.s(cmp=False, repr=False, slots=True)
 class Layer:
@@ -48,6 +50,9 @@ class Layer:
     _selection: Set = attr.ib(default=attr.Factory(set), init=False)
     _selectionBounds: Optional[Tuple] = attr.ib(default=None, init=False)
     _visible: bool = attr.ib(default=False, init=False)
+
+    # For undo/redo
+    _undo: Optional[Dict] = attr.ib(default=None, init=False)
 
     def __attrs_post_init__(self):
         for anchor in self._anchors.values():
@@ -419,3 +424,114 @@ class Layer:
             changed |= path.transform(
                 transformation, selectionOnly=selectionOnly)
         return changed
+
+    def snapshot(self, paths=False, anchors=False, components=False, guidelines=False):
+        """serializes (parts) of the layer in order the restore the layer to that state later on.
+        Returns a lambda that performs this state restoration."""
+        from tfont.converters.tfontConverter import TFontConverter as TFC
+        tfc = TFC(indent=None) # indent=None means: "Do not dump JSON, but just plain Dict"
+        snaps = []
+        if paths:
+            snaps.append(('paths', tfc.unstructure(self._paths)))
+        if anchors:
+            # unstructure Anchors as List of values,
+            # one of these values is the name of anchor -- using as key 
+            # see clipboard util/clipboard.py
+            # -------------------------------
+            snaps.append(('anchors', tfc.unstructure([value for value in self._anchors.values()])))
+        if guidelines:
+            snaps.append(('guidelines', tfc.unstructure(self._guidelines)))
+        if components:
+            snaps.append(('components', tfc.unstructure(self._components)))
+        if self.selection:
+            sel = tfc.unstructure(self._selection)
+            logging.debug("LAYER: selection snapshot - selection is: {}".format(list(sel)))
+            snaps.append(('selection',list(sel)))
+        return snaps
+
+    def setToSnapshot(self, snaps):
+        from tfont.converters.tfontConverter import TFontConverter as TFC
+        tfc = TFC(indent=None)
+        for snap in snaps:
+            name, unstructured = snap
+            if name == 'paths':
+                self.paths[:] = [] # this removes the deleted points from the layer.selection
+                # The line below will also add the new point to the layer.selection
+                self.paths[:] = tfc.structure(unstructured, List[Path])
+                self.paths.applyChange()
+            elif name == 'anchors':
+                self.anchors.clear()
+                self.anchors.update({value.name:value for value in tfc.structure(unstructured, List[Anchor])})
+                # for value in self.anchors.values:
+                #     value.selected = True
+                self.anchors.applyChange()
+            elif name == 'guidelines':
+                self.guidelines[:] = tfc.structure(unstructured, List[Guideline])
+                # for guideline in self.guidelines:
+                #     guideline.selected = True
+                self.guidelines.applyChange()
+            elif name == 'components':
+                self.components[:] = tfc.structure(unstructured, List[Guideline])
+                # for comp in self.components:
+                #     comp.selected = True
+                self.components.applyChange()
+            elif name == 'selection': 
+                logging.debug("LAYER: setToSnapshot - selection before is: {}".format(self.selection))
+                self.selection.clear()
+                selection = tfc.structure(unstructured, List[Any]) 
+                
+                # update _parent field
+                for obj in selection:
+                    logging.debug("LAYER: setToSnapshot - obj is {}".format(obj))
+                    try:
+                        if isinstance(obj, Point):
+                            logging.debug("LAYER: setToSnapshot - is a point")
+                            # for path in self._paths:
+                            #     for pt in path._points:
+                            for pt in (pt for path in self._paths for pt in path._points):
+                                if pt.x == obj.x and pt.y == obj.y and pt.type == obj.type:
+                                    self._selection.add(pt)
+                                    logging.debug("LAYER: setToSnapshot - find a point to update")
+                                    break 
+
+                        elif isinstance(obj, Path):
+                            logging.debug("LAYER: setToSnapshot - is a path") 
+                            for path in self._paths:
+                                if obj == path:
+                                    self._selection.add(path)
+                                    logging.debug("LAYER: setToSnapshot - find a path to update")
+                                    break 
+
+                        elif isinstance(obj, (Anchor, Guideline, Component)):
+                            raise NotImplementedError
+
+                    except Exception as e:
+                        logging.error("LAYER: setToSnapshot - error iterate obj from selection -> {}".format(str(e)))
+                logging.debug("LAYER: setToSnapshot - selection after is: {}".format(self.selection))
+
+    def beginUndo(self, group_name: str, paths=True, anchors=True, components=True, guidelines=True):
+        #FIXME: if self._undo is not None, then log it / throw an exception
+        if not self._undo:
+            self._undo = {}
+        if group_name not in self._undo:
+            self._undo[group_name] = self.snapshot(paths, anchors, components, guidelines)
+
+    def endUndo(self, group_name: str):
+        if self._undo is None or group_name not in self._undo: 
+            raise KeyError("LAYER: endUndoGroup -> Key error {} does not exist".format(group_name))
+
+        # get all saved parts (as name)
+        names = [name for (name, snap) in self._undo[group_name]]
+        paths = 'paths' in names
+        anchors = 'anchors' in names
+        guidelines = 'guidelines' in names
+        components = 'components' in names
+
+        redoSnaps = self.snapshot(paths, anchors, components, guidelines)
+        redoAction = lambda: self.setToSnapshot(redoSnaps)
+        undoSnaps = self._undo[group_name] # we can't put "self._undo" in the lambda below since it is set to None just after
+        undoAction = lambda: self.setToSnapshot(undoSnaps)
+        
+        # end of save for this key 
+        del self._undo[group_name]
+        return undoAction, redoAction, (undoSnaps, redoSnaps)  
